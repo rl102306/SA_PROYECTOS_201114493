@@ -1,0 +1,85 @@
+<div class="catalog-container">
+  <div class="catalog-header">
+    <h1>📋 Catálogo de Productos</h1>
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="goToCreateOrder()">+ Crear Orden</button>
+    </div>
+  </div>
+
+  <!-- Filtro por restaurante -->
+  <div class="filter-section">
+    <label for="restaurantFilter">Filtrar por restaurante:</label>
+    <select 
+      id="restaurantFilter" 
+      [(ngModel)]="selectedRestaurantId" 
+      (change)="onRestaurantFilter()"
+      class="form-control"
+    >
+      <option value="">Todos los restaurantes</option>
+      <option *ngFor="let restaurant of restaurants" [value]="restaurant.id">
+        {{ restaurant.name }}
+      </option>
+    </select>
+  </div>
+
+  <!-- Lista de productos -->
+  <div class="products-grid">
+    <div *ngFor="let product of filteredProducts" class="product-card">
+      <div class="product-header">
+        <h3>{{ product.name }}</h3>
+        <span 
+          class="availability-badge" 
+          [class.available]="product.isAvailable"
+          [class.unavailable]="!product.isAvailable"
+        >
+          {{ product.isAvailable ? '✅ Disponible' : '❌ No disponible' }}
+        </span>
+      </div>
+      
+      <p class="product-description">{{ product.description }}</p>
+      
+      <div class="product-details">
+        <span class="category-badge">{{ product.category }}</span>
+        <span class="restaurant-name">🏪 {{ getRestaurantName(product.restaurantId) }}</span>
+      </div>
+      
+      <div class="product-footer">
+        <span class="price">${{ product.price.toFixed(2) }}</span>
+        <span class="product-id">ID: {{ product.id.substring(0, 8) }}...</span>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="filteredProducts.length === 0" class="empty-state">
+    <p>No hay productos disponibles para este restaurante.</p>
+  </div>
+
+  <!-- Tabla de IDs para copiar (útil para pruebas manuales) -->
+  <div class="ids-table">
+    <h3>📝 IDs de Productos (Para Pruebas Manuales)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>ID Completo</th>
+          <th>Precio</th>
+          <th>Disponible</th>
+          <th>Restaurante</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let product of allProducts">
+          <td><strong>{{ product.name }}</strong></td>
+          <td><code>{{ product.id }}</code></td>
+          <td>${{ product.price.toFixed(2) }}</td>
+          <td>
+            <span [class.text-success]="product.isAvailable" [class.text-danger]="!product.isAvailable">
+              {{ product.isAvailable ? 'Sí' : 'No' }}
+            </span>
+          </td>
+          <td>{{ getRestaurantName(product.restaurantId) }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

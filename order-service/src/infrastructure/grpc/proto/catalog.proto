@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package catalog;
+
+service CatalogService {
+  rpc ValidateOrder (ValidationRequest) returns (ValidationResponse);
+  rpc GetProduct (GetProductRequest) returns (GetProductResponse);
+  rpc GetRestaurantCatalog (GetRestaurantCatalogRequest) returns (GetRestaurantCatalogResponse);
+}
+
+message ValidationRequest {
+  string restaurant_id = 1;
+  repeated OrderItem items = 2;
+}
+
+message OrderItem {
+  string product_id = 1;
+  int32 quantity = 2;
+  double expected_price = 3;
+}
+
+message ValidationResponse {
+  bool is_valid = 1;
+  string message = 2;
+  repeated ValidationError errors = 3;
+}
+
+message ValidationError {
+  string product_id = 1;
+  string error_type = 2;
+  string message = 3;
+}
+
+message GetProductRequest {
+  string product_id = 1;
+}
+
+message GetProductResponse {
+  bool found = 1;
+  Product product = 2;
+}
+
+message GetRestaurantCatalogRequest {
+  string restaurant_id = 1;
+}
+
+message GetRestaurantCatalogResponse {
+  repeated Product products = 1;
+}
+
+message Product {
+  string id = 1;
+  string restaurant_id = 2;
+  string name = 3;
+  string description = 4;
+  double price = 5;
+  string category = 6;
+  bool is_available = 7;
+  string image_url = 8;
+}
