@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package delivery;
+
+service DeliveryService {
+  // Aceptar una entrega (repartidor)
+  rpc AcceptDelivery (AcceptDeliveryRequest) returns (DeliveryResponse);
+  
+  // Actualizar estado de entrega
+  rpc UpdateDeliveryStatus (UpdateDeliveryStatusRequest) returns (DeliveryResponse);
+  
+  // Obtener entregas pendientes
+  rpc GetPendingDeliveries (GetPendingDeliveriesRequest) returns (DeliveryListResponse);
+  
+  // Obtener entregas de un repartidor
+  rpc GetDeliveryPersonDeliveries (GetDeliveryPersonDeliveriesRequest) returns (DeliveryListResponse);
+  
+  // Crear entrega (llamado por Order-Service)
+  rpc CreateDelivery (CreateDeliveryRequest) returns (DeliveryResponse);
+}
+
+message AcceptDeliveryRequest {
+  string delivery_id = 1;
+  string delivery_person_id = 2;
+  string delivery_person_name = 3;
+}
+
+message UpdateDeliveryStatusRequest {
+  string delivery_id = 1;
+  string status = 2;  // PICKED_UP, IN_TRANSIT, DELIVERED, CANCELLED
+  string cancellation_reason = 3;
+}
+
+message GetPendingDeliveriesRequest {}
+
+message GetDeliveryPersonDeliveriesRequest {
+  string delivery_person_id = 1;
+}
+
+message CreateDeliveryRequest {
+  string order_id = 1;
+  string pickup_address = 2;
+  string delivery_address = 3;
+  int32 estimated_time = 4;
+}
+
+message DeliveryResponse {
+  bool success = 1;
+  string message = 2;
+  Delivery delivery = 3;
+}
+
+message DeliveryListResponse {
+  bool success = 1;
+  string message = 2;
+  repeated Delivery deliveries = 3;
+}
+
+message Delivery {
+  string id = 1;
+  string order_id = 2;
+  string delivery_person_id = 3;
+  string delivery_person_name = 4;
+  string status = 5;
+  string pickup_address = 6;
+  string delivery_address = 7;
+  int32 estimated_time = 8;
+  string actual_delivery_time = 9;
+  string cancellation_reason = 10;
+  string created_at = 11;
+  string updated_at = 12;
+}

@@ -6,7 +6,6 @@ import { createDatabasePool, initializeDatabase } from './infrastructure/databas
 import { DIContainer } from './infrastructure/di/container';
 import { CreateOrderUseCase } from './application/usecases/CreateOrderUseCase';
 import { CreateOrderDTO } from './application/dtos/CreateOrderDTO';
-import { IOrderRepository } from './domain/interfaces/IOrderRepository';
 
 dotenv.config();
 
@@ -90,7 +89,7 @@ async function startServer() {
     GetOrder: async (call: any, callback: any) => {
       try {
         const { order_id } = call.request;
-        const orderRepository = container.resolve<IOrderRepository>('OrderRepository');
+        const orderRepository = container.resolve('OrderRepository');
         const order = await orderRepository.findById(order_id);
 
         if (!order) {
@@ -120,7 +119,7 @@ async function startServer() {
     GetUserOrders: async (call: any, callback: any) => {
       try {
         const { user_id } = call.request;
-        const orderRepository = container.resolve<IOrderRepository>('OrderRepository');
+        const orderRepository = container.resolve('OrderRepository');
         const orders = await orderRepository.findByUserId(user_id);
 
         callback(null, {

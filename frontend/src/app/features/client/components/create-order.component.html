@@ -81,10 +81,8 @@
           </div>
         </div>
 
-        <div class="items-list" formArrayName="items">
-        <div *ngFor="let item of items.controls; let i = index"
-            class="item-row"
-            [formGroupName]="i">
+        <div class="items-list">
+          <div *ngFor="let item of items.controls; let i = index" class="item-row" [formGroup]="item">
             <div class="item-number">{{ i + 1 }}</div>
             
             <!-- Modo Catálogo -->

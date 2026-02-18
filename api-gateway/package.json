@@ -5,8 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon --watch src --exec ts-node src/server.ts",
-     "build": "tsc && npm run copy:proto",
-    "copy:proto": "mkdir -p dist/grpc && cp -r src/grpc/proto dist/grpc/",
+    "build": "tsc",
     "start": "node dist/server.js"
   },
   "keywords": ["gateway", "rest", "grpc"],

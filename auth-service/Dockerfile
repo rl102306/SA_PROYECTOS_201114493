@@ -7,7 +7,7 @@ COPY package*.json ./
 COPY tsconfig.json ./
 
 # Instalar dependencias
-RUN npm install
+RUN npm ci
 
 # Copiar código fuente
 COPY src ./src
