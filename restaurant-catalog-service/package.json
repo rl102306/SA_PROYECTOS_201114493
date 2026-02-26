@@ -5,8 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon --watch src --exec ts-node src/server.ts",
-     "build": "tsc && npm run copy:proto",
-    "copy:proto": "mkdir -p dist/infrastructure/grpc && cp -r src/infrastructure/grpc/proto dist/infrastructure/grpc/",
+    "build": "tsc",
     "start": "node dist/server.js"
   },
   "keywords": ["catalog", "products", "grpc", "microservices"],

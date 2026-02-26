@@ -288,7 +288,6 @@ docker-compose logs -f
 docker-compose logs -f auth-service
 docker-compose logs -f order-service
 docker-compose logs -f catalog-service
-docker-compose logs -f api-gateway
 
 # Para salir de los logs: Ctrl + C
 ```

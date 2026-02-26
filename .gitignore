@@ -1,0 +1,382 @@
+# ============================================
+# DELIVEREATS - .gitignore
+# ============================================
+
+# ============================================
+# VARIABLES DE ENTORNO Y SECRETOS
+# ============================================
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+*.pem
+*.key
+*.p12
+secrets/
+credentials.json
+
+# ============================================
+# NODE.JS
+# ============================================
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Cache
+.npm
+.eslintcache
+.node_repl_history
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# ============================================
+# TYPESCRIPT
+# ============================================
+*.js.map
+*.d.ts.map
+tsconfig.tsbuildinfo
+
+# ============================================
+# ANGULAR
+# ============================================
+# Angular cache
+.angular/
+.angular/cache/
+
+# Compiled output
+/dist
+/tmp
+/out-tsc
+/bazel-out
+
+# IDEs and editors
+.idea/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/*
+
+# Angular specific
+/e2e/*.js
+/e2e/*.map
+
+# ============================================
+# DOCKER
+# ============================================
+# No ignorar Dockerfile ni docker-compose.yml
+# pero sí los volúmenes locales
+docker-compose.override.yml
+.docker/
+
+# ============================================
+# LOGS
+# ============================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
+log.txt
+
+# ============================================
+# BASES DE DATOS
+# ============================================
+# PostgreSQL
+*.sql.gz
+*.dump
+*.backup
+
+# SQLite
+*.sqlite
+*.sqlite3
+*.db
+
+# Archivos de datos locales
+data/
+db-data/
+postgres-data/
+
+# ============================================
+# SISTEMAS OPERATIVOS
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ============================================
+# IDEs y EDITORES
+# ============================================
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.history/
+*.vsix
+
+# JetBrains (WebStorm, IntelliJ, etc)
+.idea/
+*.iml
+*.ipr
+*.iws
+.idea_modules/
+out/
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/dictionaries
+.idea/shelf
+.idea/aws.xml
+.idea/contentModel.xml
+.idea/dataSources/
+.idea/dataSources.ids
+.idea/dataSources.local.xml
+.idea/sqlDataSources.xml
+.idea/dynamic.xml
+.idea/uiDesigner.xml
+.idea/dbnavigator.xml
+.idea/gradle.xml
+.idea/libraries
+.idea/mongoSettings.xml
+*.iml
+modules.xml
+.idea/misc.xml
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+[._]*.s[a-v][a-z]
+!*.svg
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+Session.vim
+Sessionx.vim
+.netrwhist
+*~
+tags
+[._]*.un~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+.org-id-locations
+*_archive
+*_flymake.*
+/eshell/history
+/eshell/lastdir
+/elpa/
+*.rel
+/auto/
+.cask/
+flycheck_*.el
+/server/
+.projectile
+.dir-locals.el
+/network-security.data
+
+# ============================================
+# TESTING
+# ============================================
+coverage/
+*.lcov
+.nyc_output/
+lib-cov/
+.grunt/
+.lock-wscript
+test-results/
+junit.xml
+
+# Jest
+jest-coverage/
+.jest/
+
+# ============================================
+# TEMPORAL Y CACHE
+# ============================================
+*.tmp
+*.temp
+*.swp
+*.swo
+*~.nib
+local.properties
+.cache/
+tmp/
+temp/
+
+# ============================================
+# COMPILADOS Y GENERADOS
+# ============================================
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+*.dylib
+
+# ============================================
+# CLOUD Y DEPLOYMENT
+# ============================================
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# Google Cloud
+gcloud/
+.gcloud/
+
+# AWS
+.aws/
+
+# Azure
+.azure/
+
+# ============================================
+# PROTOBUF GENERADOS (Opcional)
+# ============================================
+# Descomenta si generas código desde .proto
+# **/*_pb.js
+# **/*_pb.d.ts
+# **/*_grpc_pb.js
+# **/*_grpc_pb.d.ts
+
+# ============================================
+# CERTIFICADOS SSL/TLS
+# ============================================
+*.crt
+*.cer
+*.der
+*.pfx
+*.p7b
+*.p7c
+*.csr
+
+# ============================================
+# BACKUPS
+# ============================================
+*.bak
+*.backup
+*.old
+*.orig
+
+# ============================================
+# ARCHIVOS GRANDES
+# ============================================
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# EXCEPCIONES: Permitir estos zips si los necesitas
+!delivereats-project-complete.zip
+
+# ============================================
+# MISCELÁNEO
+# ============================================
+.sass-cache/
+.connect.lock
+.typingsrc
+.grunt/
+.lock-wscript
+.serverless/
+.fusebox/
+.dynamodb/
+.tern-port
+.vscode-test
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# ============================================
+# NOTAS DEL DESARROLLADOR
+# ============================================
+NOTES.md
+TODO.md
+PERSONAL.md
+
+# ============================================
+# ARCHIVOS DE SISTEMA
+# ============================================
+.localized
+
+# ============================================
+# FIN
+# ============================================

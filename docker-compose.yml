@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   # ============================================
   # BASES DE DATOS
@@ -173,6 +175,66 @@ services:
       - delivereats-network
     restart: unless-stopped
 
+  # ============================================
+  # DELIVERY DATABASE
+  # ============================================
+  delivery-db:
+    image: postgres:15-alpine
+    container_name: delivereats-delivery-db
+    environment:
+      POSTGRES_DB: delivery_db
+      POSTGRES_USER: delivery_user
+      POSTGRES_PASSWORD: delivery_password
+    ports:
+      - "5435:5432"
+    volumes:
+      - delivery-db-data:/var/lib/postgresql/data
+    networks:
+      - delivereats-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U delivery_user -d delivery_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # DELIVERY SERVICE
+  # ============================================
+  delivery-service:
+    build: ./delivery-service
+    container_name: delivereats-delivery-service
+    environment:
+      NODE_ENV: production
+      GRPC_PORT: 50054
+      DB_HOST: delivery-db
+      DB_PORT: 5432
+      DB_NAME: delivery_db
+      DB_USER: delivery_user
+      DB_PASSWORD: delivery_password
+    depends_on:
+      delivery-db:
+        condition: service_healthy
+    networks:
+      - delivereats-network
+    restart: unless-stopped
+
+  # ============================================
+  # NOTIFICATION SERVICE
+  # ============================================
+  notification-service:
+    build: ./notification-service
+    container_name: delivereats-notification-service
+    environment:
+      NODE_ENV: production
+      GRPC_PORT: 50055
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+    networks:
+      - delivereats-network
+    restart: unless-stopped
+
 # ============================================
 # REDES Y VOLÚMENES
 # ============================================
@@ -189,3 +251,5 @@ volumes:
     name: delivereats-catalog-db-data
   order-db-data:
     name: delivereats-order-db-data
+  delivery-db-data:
+    name: delivereats-delivery-db-data

@@ -8,7 +8,7 @@ export interface OrderItemDTO {
 
 export interface ValidationErrorDTO {
   productId: string;
-  errorType: 'NO_EXISTE' | 'PRECIO_INCORRECTO' | 'NO DISPONIBLE' | 'RESTAURANTE_INCORRECTO';
+  errorType: 'NOT_FOUND' | 'WRONG_PRICE' | 'UNAVAILABLE' | 'WRONG_RESTAURANT';
   message: string;
 }
 
@@ -36,7 +36,7 @@ export class ValidateOrderUseCase {
       if (!product) {
         errors.push({
           productId: item.productId,
-          errorType: 'NO_EXISTE',
+          errorType: 'NOT_FOUND',
           message: `Producto ${item.productId} no encontrado`
         });
         continue;
@@ -46,7 +46,7 @@ export class ValidateOrderUseCase {
       if (product.restaurantId !== restaurantId) {
         errors.push({
           productId: item.productId,
-          errorType: 'RESTAURANTE_INCORRECTO',
+          errorType: 'WRONG_RESTAURANT',
           message: `Producto ${item.productId} no pertenece al restaurante ${restaurantId}`
         });
         continue;
@@ -56,7 +56,7 @@ export class ValidateOrderUseCase {
       if (!product.isAvailable) {
         errors.push({
           productId: item.productId,
-          errorType: 'NO DISPONIBLE',
+          errorType: 'UNAVAILABLE',
           message: `Producto ${item.productId} (${product.name}) no está disponible`
         });
         continue;
@@ -66,7 +66,7 @@ export class ValidateOrderUseCase {
       if (Math.abs(product.price - item.expectedPrice) > 0.01) {
         errors.push({
           productId: item.productId,
-          errorType: 'PRECIO_INCORRECTO',
+          errorType: 'WRONG_PRICE',
           message: `Precio incorrecto para ${product.name}. Precio actual: $${product.price.toFixed(2)}, Precio recibido: $${item.expectedPrice.toFixed(2)}`
         });
       }

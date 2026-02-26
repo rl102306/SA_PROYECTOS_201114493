@@ -38,14 +38,8 @@ export class LoginComponent {
           console.log('✅ Login exitoso');
           const user = response.user;
           
-          // Redirigir según el rol
-          if (user?.role === 'ADMIN') {
-            this.router.navigate(['/admin']);
-          } else if (user?.role === 'CLIENT') {
-            this.router.navigate(['client/orders']);
-          } else {
-            this.router.navigate(['/']);
-          }
+          // Redirigir a crear orden
+          this.router.navigate(['/client/create-order']);
         } else {
           this.errorMessage = response.message || 'Error al iniciar sesión';
         }
@@ -60,6 +54,6 @@ export class LoginComponent {
   }
 
   goToRegister(): void {
-    this.router.navigate(['register']);
+    this.router.navigate(['/auth/register']);
   }
 }

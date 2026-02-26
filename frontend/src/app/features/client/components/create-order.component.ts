@@ -10,6 +10,7 @@ import { AuthService } from '../../../core/services/auth.service';
   styleUrls: ['./create-order.component.css']
 })
 export class CreateOrderComponent implements OnInit {
+
   orderForm: FormGroup;
   errorMessage: string = '';
   successMessage: string = '';
@@ -17,14 +18,12 @@ export class CreateOrderComponent implements OnInit {
   currentUser: any;
   showCatalog: boolean = false;
 
-  // Restaurantes disponibles
   availableRestaurants = [
     { id: '99999999-9999-9999-9999-999999999999', name: 'Restaurante Central', type: 'Comida Variada' },
     { id: '88888888-8888-8888-8888-888888888888', name: 'Pizzeria Italia', type: 'Pizzas' },
     { id: '77777777-7777-7777-7777-777777777777', name: 'Burger House', type: 'Hamburguesas' }
   ];
 
-  // Productos del catálogo (para referencia)
   catalogProducts = [
     { id: '11111111-1111-1111-1111-111111111111', restaurantId: '99999999-9999-9999-9999-999999999999', name: 'Pizza Margarita', price: 12.99, available: true },
     { id: '22222222-2222-2222-2222-222222222222', restaurantId: '99999999-9999-9999-9999-999999999999', name: 'Hamburguesa Clásica', price: 8.50, available: true },
@@ -55,6 +54,7 @@ export class CreateOrderComponent implements OnInit {
     });
   }
 
+  // ✅ Getter limpio (NO genéricos raros)
   get items(): FormArray {
     return this.orderForm.get('items') as FormArray;
   }
@@ -64,8 +64,9 @@ export class CreateOrderComponent implements OnInit {
   }
 
   get restaurantProducts() {
-    const restaurantId = this.selectedRestaurantId;
-    return this.catalogProducts.filter(p => p.restaurantId === restaurantId);
+    return this.catalogProducts.filter(
+      p => p.restaurantId === this.selectedRestaurantId
+    );
   }
 
   addItemFromCatalog(): void {
@@ -97,21 +98,22 @@ export class CreateOrderComponent implements OnInit {
   onProductChange(index: number): void {
     const item = this.items.at(index);
     const productId = item.get('productId')?.value;
-    const product = this.catalogProducts.find(p => p.id === productId);
-    
+
+    const product = this.catalogProducts.find(
+      p => p.id === productId
+    );
+
     if (product) {
       item.patchValue({ price: product.price });
     }
   }
 
   getTotalAmount(): number {
-    let total = 0;
-    this.items.controls.forEach(item => {
+    return this.items.controls.reduce((total, item) => {
       const quantity = item.get('quantity')?.value || 0;
       const price = item.get('price')?.value || 0;
-      total += quantity * price;
-    });
-    return total;
+      return total + (quantity * price);
+    }, 0);
   }
 
   toggleCatalog(): void {
@@ -119,8 +121,10 @@ export class CreateOrderComponent implements OnInit {
   }
 
   onSubmit(): void {
+
     if (this.orderForm.invalid || this.items.length === 0) {
-      this.errorMessage = 'Por favor completa todos los campos y agrega al menos un producto';
+      this.errorMessage =
+        'Por favor completa todos los campos y agrega al menos un producto';
       return;
     }
 
@@ -133,26 +137,24 @@ export class CreateOrderComponent implements OnInit {
       userId: this.currentUser?.id
     };
 
-    console.log('📦 Enviando orden:', orderData);
-
     this.orderService.createOrder(orderData).subscribe({
       next: (response) => {
         if (response.success) {
-          this.successMessage = `✅ ¡Orden creada exitosamente! ID: ${response.order?.id}`;
-          console.log('✅ Orden creada:', response.order);
-          
+          this.successMessage =
+            `✅ ¡Orden creada exitosamente! ID: ${response.order?.id}`;
+
           this.orderForm.reset();
           this.items.clear();
-          
         } else {
-          this.errorMessage = response.message || 'Error al crear orden';
-          console.error('❌ Error:', response.message);
+          this.errorMessage =
+            response.message || 'Error al crear orden';
         }
+
         this.isLoading = false;
       },
       error: (error) => {
-        console.error('❌ Error al crear orden:', error);
-        this.errorMessage = error.error?.message || 'Error al crear orden';
+        this.errorMessage =
+          error.error?.message || 'Error al crear orden';
         this.isLoading = false;
       }
     });
