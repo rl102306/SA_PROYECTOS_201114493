@@ -5,180 +5,218 @@
       <button class="btn btn-info" (click)="toggleCatalog()">
         {{ showCatalog ? '❌ Cerrar' : '📋 Ver Catálogo' }}
       </button>
-      <button class="btn btn-secondary" (click)="logout()">Cerrar Sesión</button>
+      <button class="btn btn-secondary" (click)="logout()">
+        Cerrar Sesión
+      </button>
     </div>
   </div>
 
-  <!-- Catálogo de Productos (Modal/Sidebar) -->
+  <!-- ================== CATÁLOGO ================== -->
   <div class="catalog-modal" *ngIf="showCatalog">
     <div class="catalog-content">
       <h2>📋 Catálogo de Productos</h2>
-      <p class="catalog-subtitle">Productos disponibles del restaurante seleccionado</p>
-      
+
       <div *ngIf="!selectedRestaurantId" class="empty-catalog">
         <p>⚠️ Primero selecciona un restaurante</p>
       </div>
 
       <div *ngIf="selectedRestaurantId" class="catalog-list">
-        <div *ngFor="let product of restaurantProducts" class="catalog-item" 
-             [class.unavailable]="!product.available">
+        <div
+          *ngFor="let product of restaurantProducts"
+          class="catalog-item"
+          [class.unavailable]="!product.available"
+        >
           <div class="product-info">
             <h4>{{ product.name }}</h4>
-            <p class="product-price">${{ product.price.toFixed(2) }}</p>
-            <p class="product-status" *ngIf="!product.available">❌ No disponible</p>
-            <p class="product-status success" *ngIf="product.available">✅ Disponible</p>
+            <p class="product-price">
+              ${{ product.price.toFixed(2) }}
+            </p>
+
+            <p *ngIf="!product.available" class="product-status">
+              ❌ No disponible
+            </p>
+            <p *ngIf="product.available" class="product-status success">
+              ✅ Disponible
+            </p>
           </div>
-          <div class="product-id">
-            <small>ID: {{ product.id }}</small>
-          </div>
+
+          <small>ID: {{ product.id }}</small>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- ================== FORM ================== -->
   <div class="order-card">
     <form [formGroup]="orderForm" (ngSubmit)="onSubmit()">
-      
-      <!-- Selector de Restaurante -->
+
+      <!-- Restaurante -->
       <div class="form-group highlight">
-        <label for="restaurant">🏪 Selecciona el Restaurante</label>
-        <select
-          id="restaurant"
-          formControlName="restaurantId"
-          class="form-control"
-        >
+        <label>🏪 Restaurante</label>
+        <select formControlName="restaurantId" class="form-control">
           <option value="">Selecciona un restaurante</option>
-          <option *ngFor="let restaurant of availableRestaurants" [value]="restaurant.id">
+          <option
+            *ngFor="let restaurant of availableRestaurants"
+            [value]="restaurant.id"
+          >
             {{ restaurant.name }} - {{ restaurant.type }}
           </option>
         </select>
-        <small class="form-hint">⚠️ Los productos deben pertenecer al restaurante seleccionado</small>
       </div>
 
-      <!-- Dirección de entrega -->
+      <!-- Dirección -->
       <div class="form-group">
-        <label for="deliveryAddress">📍 Dirección de Entrega</label>
+        <label>📍 Dirección de Entrega</label>
         <input
-          id="deliveryAddress"
           type="text"
           formControlName="deliveryAddress"
-          placeholder="Calle 123, Colonia Centro, Ciudad"
           class="form-control"
         />
       </div>
 
-      <!-- Lista de productos -->
+      <!-- ================== PRODUCTOS ================== -->
       <div class="products-section">
         <div class="section-header">
           <h3>🛒 Productos</h3>
           <div class="button-group">
-            <button type="button" class="btn btn-success btn-sm" (click)="addItemFromCatalog()">
+            <button
+              type="button"
+              class="btn btn-success btn-sm"
+              (click)="addItemFromCatalog()"
+            >
               + Desde Catálogo
             </button>
-            <button type="button" class="btn btn-warning btn-sm" (click)="addItemManual()">
-              ✏️ Ingresar Manual
+
+            <button
+              type="button"
+              class="btn btn-warning btn-sm"
+              (click)="addItemManual()"
+            >
+              ✏️ Manual
             </button>
           </div>
         </div>
 
         <div class="items-list">
-          <div *ngFor="let item of items.controls; let i = index" class="item-row" [formGroup]="item">
-            <div class="item-number">{{ i + 1 }}</div>
-            
-            <!-- Modo Catálogo -->
-            <div *ngIf="item.get('mode')?.value === 'catalog'" class="item-content">
-              <div class="form-group">
-                <label>Producto</label>
-                <select formControlName="productId" (change)="onProductChange(i)" class="form-control">
-                  <option value="">Selecciona un producto</option>
-                  <option *ngFor="let product of restaurantProducts" [value]="product.id">
-                    {{ product.name }} - ${{ product.price.toFixed(2) }}
-                    {{ !product.available ? '(No disponible)' : '' }}
-                  </option>
-                </select>
+
+          <div formArrayName="items">
+
+            <div
+              *ngFor="let item of items.controls; let i = index"
+              [formGroupName]="i"
+              class="item-row"
+            >
+
+              <div class="item-number">{{ i + 1 }}</div>
+
+              <!-- ===== MODO CATÁLOGO ===== -->
+              <div *ngIf="item.get('mode')?.value === 'catalog'" class="item-content">
+
+                <div class="form-group">
+                  <label>Producto</label>
+                  <select
+                    formControlName="productId"
+                    (change)="onProductChange(i)"
+                    class="form-control"
+                  >
+                    <option value="">Selecciona un producto</option>
+                    <option
+                      *ngFor="let product of restaurantProducts"
+                      [value]="product.id"
+                    >
+                      {{ product.name }} - ${{ product.price.toFixed(2) }}
+                    </option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>Cantidad</label>
+                  <input
+                    type="number"
+                    formControlName="quantity"
+                    min="1"
+                    class="form-control"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label>Precio</label>
+                  <input
+                    type="number"
+                    formControlName="price"
+                    readonly
+                    class="form-control"
+                  />
+                </div>
+
               </div>
 
-              <div class="form-group">
-                <label>Cantidad</label>
-                <input
-                  type="number"
-                  formControlName="quantity"
-                  min="1"
-                  class="form-control"
-                />
+              <!-- ===== MODO MANUAL ===== -->
+              <div *ngIf="item.get('mode')?.value === 'manual'" class="item-content">
+
+                <div class="form-group">
+                  <label>Product ID</label>
+                  <input
+                    type="text"
+                    formControlName="productId"
+                    class="form-control"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label>Cantidad</label>
+                  <input
+                    type="number"
+                    formControlName="quantity"
+                    min="1"
+                    class="form-control"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label>Precio</label>
+                  <input
+                    type="number"
+                    formControlName="price"
+                    step="0.01"
+                    class="form-control"
+                  />
+                </div>
+
               </div>
 
-              <div class="form-group">
-                <label>Precio</label>
-                <input
-                  type="number"
-                  formControlName="price"
-                  step="0.01"
-                  readonly
-                  class="form-control readonly"
-                />
+              <div class="item-total">
+                ${{
+                  (item.get('quantity')?.value || 0) *
+                  (item.get('price')?.value || 0)
+                }}
               </div>
+
+              <button
+                type="button"
+                class="btn btn-danger btn-sm"
+                (click)="removeItem(i)"
+              >
+                🗑️
+              </button>
+
             </div>
 
-            <!-- Modo Manual -->
-            <div *ngIf="item.get('mode')?.value === 'manual'" class="item-content">
-              <div class="form-group">
-                <label>Product ID (Manual)</label>
-                <input
-                  type="text"
-                  formControlName="productId"
-                  placeholder="11111111-1111-1111-1111-111111111111"
-                  class="form-control"
-                />
-                <small class="form-hint">💡 Ingresa un ID para probar errores</small>
-              </div>
-
-              <div class="form-group">
-                <label>Cantidad</label>
-                <input
-                  type="number"
-                  formControlName="quantity"
-                  min="1"
-                  class="form-control"
-                />
-              </div>
-
-              <div class="form-group">
-                <label>Precio (Manual)</label>
-                <input
-                  type="number"
-                  formControlName="price"
-                  step="0.01"
-                  placeholder="0.00"
-                  class="form-control editable"
-                />
-                <small class="form-hint">💡 Cambia el precio para probar validación</small>
-              </div>
-            </div>
-
-            <div class="item-total">
-              ${{ (item.get('quantity')?.value * item.get('price')?.value).toFixed(2) }}
-            </div>
-
-            <button type="button" class="btn btn-danger btn-sm" (click)="removeItem(i)">
-              🗑️
-            </button>
           </div>
 
           <div *ngIf="items.length === 0" class="empty-state">
             <p>No hay productos agregados.</p>
-            <p>Click en "+ Desde Catálogo" para agregar productos del restaurante</p>
-            <p>Click en "✏️ Ingresar Manual" para probar validaciones con IDs/precios incorrectos</p>
           </div>
+
         </div>
       </div>
 
-      <!-- Total -->
+      <!-- ================== TOTAL ================== -->
       <div class="order-total" *ngIf="items.length > 0">
         <h3>Total: ${{ getTotalAmount().toFixed(2) }}</h3>
       </div>
 
-      <!-- Messages -->
+      <!-- Mensajes -->
       <div class="alert alert-success" *ngIf="successMessage">
         {{ successMessage }}
       </div>
@@ -193,32 +231,10 @@
         class="btn btn-primary btn-block btn-lg"
         [disabled]="orderForm.invalid || items.length === 0 || isLoading"
       >
-        <span *ngIf="!isLoading">🚀 Realizar Pedido (Validación gRPC)</span>
-        <span *ngIf="isLoading">⏳ Validando con gRPC...</span>
+        <span *ngIf="!isLoading">🚀 Realizar Pedido</span>
+        <span *ngIf="isLoading">⏳ Validando...</span>
       </button>
+
     </form>
-  </div>
-
-  <!-- Info cards -->
-  <div class="info-cards">
-    <div class="info-card success">
-      <h4>✅ Casos de Éxito</h4>
-      <ul>
-        <li>Seleccionar restaurante correcto</li>
-        <li>Agregar productos del catálogo</li>
-        <li>Usar precios correctos (automáticos)</li>
-        <li>Productos disponibles</li>
-      </ul>
-    </div>
-
-    <div class="info-card error">
-      <h4>❌ Casos de Error (Para Probar)</h4>
-      <ul>
-        <li><strong>NOT_FOUND:</strong> Usa "Ingresar Manual" con ID inventado (ej: ffffffff-ffff-ffff-ffff-ffffffffffff)</li>
-        <li><strong>WRONG_PRICE:</strong> Usa "Ingresar Manual" y cambia el precio (ej: $5.00 en vez de $12.99)</li>
-        <li><strong>UNAVAILABLE:</strong> Selecciona "Ensalada César" (está marcada como no disponible)</li>
-        <li><strong>WRONG_RESTAURANT:</strong> El backend valida que el producto pertenezca al restaurante</li>
-      </ul>
-    </div>
   </div>
 </div>
