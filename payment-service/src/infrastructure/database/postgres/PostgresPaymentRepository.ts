@@ -39,6 +39,15 @@ export class PostgresPaymentRepository implements IPaymentRepository {
     return this.mapToEntity(result.rows[0]);
   }
 
+  async refundByOrderId(orderId: string): Promise<Payment | null> {
+    const result = await this.pool.query(
+      `UPDATE payments SET status = 'REFUNDED' WHERE order_id = $1 AND status = 'COMPLETED' RETURNING *`,
+      [orderId]
+    );
+    if (result.rows.length === 0) return null;
+    return this.mapToEntity(result.rows[0]);
+  }
+
   private mapToEntity(row: any): Payment {
     return new Payment({
       id: row.id,

@@ -43,6 +43,31 @@ export class PaymentServiceHandler {
     }
   }
 
+  async RefundPayment(call: any, callback: any): Promise<void> {
+    try {
+      const { order_id } = call.request;
+      const payment = await this.paymentRepository.refundByOrderId(order_id);
+
+      if (!payment) {
+        callback(null, {
+          success: false,
+          message: 'No se encontró un pago COMPLETADO para esta orden',
+          payment: null
+        });
+        return;
+      }
+
+      callback(null, {
+        success: true,
+        message: 'Reembolso aprobado correctamente',
+        payment: this.mapToGrpc(payment)
+      });
+    } catch (error: any) {
+      console.error('❌ Error en RefundPayment:', error);
+      callback(null, { success: false, message: error.message || 'Error al procesar reembolso', payment: null });
+    }
+  }
+
   private mapToGrpc(payment: Payment): any {
     return {
       id: payment.id,

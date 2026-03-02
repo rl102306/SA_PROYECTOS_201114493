@@ -66,10 +66,10 @@ export class AuthServiceHandler {
         callback(null, { valid: false, user_id: '', email: '', role: '' });
         return;
       }
-      callback(null, { valid: true, user_id: payload.userId, email: payload.email, role: payload.role });
+      callback(null, { valid: true, user_id: payload.userId, email: payload.email, role: payload.role, restaurant_id: payload.restaurantId || '' });
     } catch (error) {
       console.error('Error en ValidateToken:', error);
-      callback(null, { valid: false, user_id: '', email: '', role: '' });
+      callback(null, { valid: false, user_id: '', email: '', role: '', restaurant_id: '' });
     }
   }
 

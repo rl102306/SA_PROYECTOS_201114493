@@ -107,6 +107,27 @@ export class DeliveryServiceHandler {
     }
   }
 
+  async GetDeliveryByOrder(call: any, callback: any) {
+    try {
+      const { order_id } = call.request;
+      const delivery = await this.deliveryRepository.findByOrderId(order_id);
+
+      if (!delivery) {
+        callback(null, { success: false, message: 'No hay entrega para esta orden', delivery: null });
+        return;
+      }
+
+      callback(null, {
+        success: true,
+        message: 'Entrega encontrada',
+        delivery: this.mapToGrpcDelivery(delivery)
+      });
+    } catch (error: any) {
+      console.error('❌ Error en GetDeliveryByOrder:', error);
+      callback(null, { success: false, message: error.message || 'Error al buscar entrega', delivery: null });
+    }
+  }
+
   async CreateDelivery(call: any, callback: any) {
     try {
       const { order_id, pickup_address, delivery_address, estimated_time } = call.request;

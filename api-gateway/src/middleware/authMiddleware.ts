@@ -28,7 +28,8 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
     (req as any).user = {
       userId: validation.user_id,
       email: validation.email,
-      role: validation.role
+      role: validation.role,
+      restaurantId: validation.restaurant_id || undefined
     };
 
     next();

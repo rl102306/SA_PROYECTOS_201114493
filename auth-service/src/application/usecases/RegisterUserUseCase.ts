@@ -1,4 +1,5 @@
-import { User } from '../../domain/entities/User';
+import { v4 as uuidv4 } from 'uuid';
+import { User, UserRole } from '../../domain/entities/User';
 import { IUserRepository } from '../../domain/interfaces/IUserRepository';
 import { IPasswordHasher } from '../../domain/interfaces/IPasswordHasher';
 import { RegisterUserDTO } from '../dtos/RegisterUserDTO';
@@ -25,13 +26,19 @@ export class RegisterUserUseCase {
     // Hashear contraseña
     const hashedPassword = await this.passwordHasher.hash(dto.password);
 
+    // Pre-generar el UUID para poder usar el mismo ID como restaurantId
+    const userId = uuidv4();
+
     // Crear usuario
+    // Si es RESTAURANT: restaurantId = userId, porque catalog-service usa user.id como restaurant.id
     const user = new User({
+      id: userId,
       email: dto.email,
       password: hashedPassword,
       firstName: dto.firstName,
       lastName: dto.lastName,
-      role: dto.role
+      role: dto.role,
+      restaurantId: dto.role === UserRole.RESTAURANT ? userId : undefined
     });
 
     // Guardar en repositorio

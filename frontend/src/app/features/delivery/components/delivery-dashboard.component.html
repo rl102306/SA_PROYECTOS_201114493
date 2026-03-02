@@ -12,6 +12,36 @@
   <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
   <div class="alert alert-error" *ngIf="errorMessage">{{ errorMessage }}</div>
 
+  <!-- Modal cancelación de entrega -->
+  <div class="photo-upload-panel" *ngIf="showCancelModal">
+    <div class="photo-upload-card">
+      <h3>Cancelar Entrega</h3>
+      <p>Por favor indica el motivo por el que no se pudo realizar la entrega. Esta información es obligatoria.</p>
+
+      <div class="cancel-input-wrapper">
+        <label for="cancelReason">Motivo de cancelación *</label>
+        <textarea
+          id="cancelReason"
+          class="cancel-reason-input"
+          [(ngModel)]="cancelReason"
+          placeholder="Ej: El cliente no estaba en el domicilio, dirección incorrecta, accidente en el trayecto..."
+          rows="4"
+        ></textarea>
+      </div>
+
+      <div class="photo-actions">
+        <button class="btn btn-secondary" (click)="closeCancelModal()">Volver</button>
+        <button
+          class="btn btn-cancel-confirm"
+          (click)="confirmCancel()"
+          [disabled]="!cancelReason.trim() || isUpdating"
+        >
+          {{ isUpdating ? 'Procesando...' : 'Confirmar Cancelación' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal foto para DELIVERED -->
   <div class="photo-upload-panel" *ngIf="deliveryIdForPhoto">
     <div class="photo-upload-card">
@@ -73,14 +103,23 @@
           <div *ngIf="delivery.estimated_time"><strong>Tiempo estimado:</strong> {{ delivery.estimated_time }} min</div>
         </div>
 
-        <div class="delivery-actions" *ngIf="hasNextStatus(delivery)">
+        <div class="delivery-actions" *ngIf="hasNextStatus(delivery) || isCancellable(delivery)">
           <button
             class="btn btn-action"
             [class.btn-delivered]="nextStatus[delivery.status] === 'DELIVERED'"
             (click)="advanceStatus(delivery)"
             [disabled]="isUpdating"
+            *ngIf="hasNextStatus(delivery)"
           >
             {{ nextStatusLabel[delivery.status] }}
+          </button>
+          <button
+            class="btn btn-cancel"
+            (click)="openCancelModal(delivery)"
+            [disabled]="isUpdating"
+            *ngIf="isCancellable(delivery)"
+          >
+            Cancelar Entrega
           </button>
         </div>
 
@@ -93,6 +132,10 @@
               alt="Foto de entrega"
             />
           </div>
+        </div>
+
+        <div class="cancelled-info" *ngIf="delivery.status === 'CANCELLED'">
+          <strong>Motivo:</strong> {{ delivery.cancellation_reason || 'Sin motivo registrado' }}
         </div>
       </div>
     </div>

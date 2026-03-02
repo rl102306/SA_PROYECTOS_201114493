@@ -206,16 +206,16 @@ export class RestaurantMenuComponent implements OnInit, OnDestroy {
   }
 
   finishOrder(order: any): void {
-    this.menuService.updateOrderStatus(order.id, 'DELIVERED').subscribe({
+    this.menuService.updateOrderStatus(order.id, 'IN_DELIVERY').subscribe({
       next: (res: any) => {
         if (res.success) {
-          this.orders = this.orders.filter(o => o.id !== order.id);
-          this.successMessage = 'Pedido marcado como entregado';
+          order.status = 'IN_DELIVERY';
+          this.successMessage = 'Pedido listo — esperando repartidor';
         } else {
           this.errorMessage = res.message || 'Error';
         }
       },
-      error: () => { this.errorMessage = 'Error al finalizar el pedido'; }
+      error: () => { this.errorMessage = 'Error al actualizar el pedido'; }
     });
   }
 

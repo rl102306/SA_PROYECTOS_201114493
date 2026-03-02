@@ -66,6 +66,30 @@ export class DeliveryServiceClient {
       );
     });
   }
+
+  async getDeliveryByOrder(orderId: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client.GetDeliveryByOrder(
+        { order_id: orderId },
+        (error: any, response: any) => {
+          if (error) { reject(error); return; }
+          resolve(response);
+        }
+      );
+    });
+  }
+
+  async createDelivery(orderId: string, pickupAddress: string, deliveryAddress: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client.CreateDelivery(
+        { order_id: orderId, pickup_address: pickupAddress, delivery_address: deliveryAddress, estimated_time: 30 },
+        (error: any, response: any) => {
+          if (error) { reject(error); return; }
+          resolve(response);
+        }
+      );
+    });
+  }
 }
 
 export const deliveryServiceClient = new DeliveryServiceClient();

@@ -14,6 +14,7 @@ export interface UserProps {
   firstName: string;
   lastName: string;
   role: UserRole;
+  restaurantId?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -25,6 +26,7 @@ export class User {
   private _firstName: string;
   private _lastName: string;
   private _role: UserRole;
+  private _restaurantId?: string;
   private readonly _createdAt: Date;
   private _updatedAt: Date;
 
@@ -35,6 +37,7 @@ export class User {
     this._firstName = props.firstName;
     this._lastName = props.lastName;
     this._role = props.role;
+    this._restaurantId = props.restaurantId;
     this._createdAt = props.createdAt || new Date();
     this._updatedAt = props.updatedAt || new Date();
   }
@@ -45,6 +48,7 @@ export class User {
   get firstName(): string { return this._firstName; }
   get lastName(): string { return this._lastName; }
   get role(): UserRole { return this._role; }
+  get restaurantId(): string | undefined { return this._restaurantId; }
   get createdAt(): Date { return this._createdAt; }
   get updatedAt(): Date { return this._updatedAt; }
 

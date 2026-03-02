@@ -17,6 +17,9 @@ service DeliveryService {
   
   // Crear entrega (llamado por Order-Service)
   rpc CreateDelivery (CreateDeliveryRequest) returns (DeliveryResponse);
+
+  // Obtener entrega por ID de orden (panel admin)
+  rpc GetDeliveryByOrder (GetDeliveryByOrderRequest) returns (DeliveryResponse);
 }
 
 message AcceptDeliveryRequest {
@@ -43,6 +46,10 @@ message CreateDeliveryRequest {
   string pickup_address = 2;
   string delivery_address = 3;
   int32 estimated_time = 4;
+}
+
+message GetDeliveryByOrderRequest {
+  string order_id = 1;
 }
 
 message DeliveryResponse {

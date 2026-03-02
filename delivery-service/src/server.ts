@@ -43,7 +43,8 @@ async function main() {
       UpdateDeliveryStatus: handler.UpdateDeliveryStatus.bind(handler),
       GetPendingDeliveries: handler.GetPendingDeliveries.bind(handler),
       GetDeliveryPersonDeliveries: handler.GetDeliveryPersonDeliveries.bind(handler),
-      CreateDelivery: handler.CreateDelivery.bind(handler)
+      CreateDelivery: handler.CreateDelivery.bind(handler),
+      GetDeliveryByOrder: handler.GetDeliveryByOrder.bind(handler)
     });
 
     // Iniciar servidor

@@ -142,5 +142,36 @@
 .btn-delivered:hover:not(:disabled) { background: #38a169; }
 .btn-accept { background: #38b2ac; color: white; }
 .btn-accept:hover:not(:disabled) { background: #319795; }
+.btn-cancel { background: #e53e3e; color: white; }
+.btn-cancel:hover:not(:disabled) { background: #c53030; }
+.btn-cancel-confirm { background: #c53030; color: white; }
+.btn-cancel-confirm:hover:not(:disabled) { background: #9b2c2c; }
 .btn-logout { background: transparent; color: white; border: 1px solid rgba(255,255,255,0.5); }
 .btn-logout:hover { background: rgba(255,255,255,0.15); }
+
+.cancel-input-wrapper { margin-bottom: 16px; }
+.cancel-input-wrapper label { display: block; font-size: 0.85rem; font-weight: 600; color: #555; margin-bottom: 6px; }
+.cancel-reason-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: 'Segoe UI', sans-serif;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+.cancel-reason-input:focus { border-color: #e53e3e; }
+
+.cancelled-info {
+  font-size: 0.85rem;
+  color: #c53030;
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+.delivery-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }

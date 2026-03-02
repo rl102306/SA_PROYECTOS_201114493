@@ -19,20 +19,22 @@ export class PostgresUserRepository implements IUserRepository {
 
   async save(user: User): Promise<User> {
     const query = `
-      INSERT INTO users (id, email, password, first_name, last_name, role, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO users (id, email, password, first_name, last_name, role, restaurant_id, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       ON CONFLICT (id) DO UPDATE SET
         email = EXCLUDED.email,
         password = EXCLUDED.password,
         first_name = EXCLUDED.first_name,
         last_name = EXCLUDED.last_name,
         role = EXCLUDED.role,
+        restaurant_id = EXCLUDED.restaurant_id,
         updated_at = EXCLUDED.updated_at
       RETURNING *
     `;
     const values = [
       user.id, user.email, user.password,
       user.firstName, user.lastName, user.role,
+      user.restaurantId || null,
       user.createdAt, user.updatedAt
     ];
     const result = await this.pool.query(query, values);
@@ -54,6 +56,7 @@ export class PostgresUserRepository implements IUserRepository {
       firstName: row.first_name,
       lastName: row.last_name,
       role: row.role as UserRole,
+      restaurantId: row.restaurant_id || undefined,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     });

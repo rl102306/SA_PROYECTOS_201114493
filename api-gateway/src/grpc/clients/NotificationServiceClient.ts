@@ -64,12 +64,29 @@ export class NotificationServiceClient {
     return this.call('SendOrderRejectedNotification', data);
   }
 
+  sendOrderInTransit(data: {
+    user_id: string; user_email: string; user_name: string;
+    order_id: string; order_number: string; products: string;
+    delivery_person_name: string; status: string;
+  }): Promise<any> {
+    return this.call('SendOrderInTransitNotification', data);
+  }
+
   sendOrderDelivered(data: {
     user_id: string; user_email: string; user_name: string;
     order_id: string; order_number: string; products: string;
     total_amount: number; status: string;
   }): Promise<any> {
     return this.call('SendOrderDeliveredNotification', data);
+  }
+
+  sendPaymentRefunded(data: {
+    user_id: string; user_email: string; user_name: string;
+    order_id: string; order_number: string; amount: number;
+    currency: string; amount_gtq: number; amount_usd: number;
+    exchange_rate: number; payment_method: string; status: string;
+  }): Promise<any> {
+    return this.call('SendPaymentRefundedNotification', data);
   }
 
   sendPaymentConfirmed(data: {

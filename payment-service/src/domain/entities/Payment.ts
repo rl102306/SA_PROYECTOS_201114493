@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 
 export type PaymentMethod = 'CREDIT_CARD' | 'DEBIT_CARD' | 'DIGITAL_WALLET';
-export type PaymentStatus = 'COMPLETED' | 'FAILED';
+export type PaymentStatus = 'COMPLETED' | 'FAILED' | 'REFUNDED';
 
 export interface PaymentProps {
   id?: string;

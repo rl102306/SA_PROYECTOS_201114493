@@ -17,6 +17,10 @@ export class AdminService {
     return new HttpHeaders({ Authorization: `Bearer ${token}` });
   }
 
+  approveRefund(orderId: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/admin/orders/${orderId}/refund`, {}, { headers: this.getHeaders() });
+  }
+
   getOrders(filters: { status?: string; from?: string; to?: string; userId?: string } = {}): Observable<any> {
     let params = new HttpParams();
     if (filters.status) params = params.set('status', filters.status);

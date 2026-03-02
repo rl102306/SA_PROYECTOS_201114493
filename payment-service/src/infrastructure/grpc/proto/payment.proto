@@ -7,6 +7,8 @@ service PaymentService {
   rpc ProcessPayment (ProcessPaymentRequest) returns (PaymentResponse);
   // Obtener pago por ID de orden
   rpc GetPaymentByOrder (GetPaymentByOrderRequest) returns (PaymentResponse);
+  // Aprobar reembolso (admin)
+  rpc RefundPayment (RefundPaymentRequest) returns (PaymentResponse);
 }
 
 message ProcessPaymentRequest {
@@ -23,6 +25,10 @@ message ProcessPaymentRequest {
 }
 
 message GetPaymentByOrderRequest {
+  string order_id = 1;
+}
+
+message RefundPaymentRequest {
   string order_id = 1;
 }
 

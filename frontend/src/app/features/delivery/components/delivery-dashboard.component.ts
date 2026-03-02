@@ -20,6 +20,11 @@ export class DeliveryDashboardComponent implements OnInit {
   photoBase64: string = '';
   isUpdating = false;
 
+  // Estado para cancelar entrega
+  showCancelModal = false;
+  deliveryIdForCancel: string | null = null;
+  cancelReason: string = '';
+
   readonly statusLabels: Record<string, string> = {
     PENDING: 'Pendiente',
     ASSIGNED: 'Asignado',
@@ -130,6 +135,33 @@ export class DeliveryDashboardComponent implements OnInit {
   cancelPhotoUpload(): void {
     this.deliveryIdForPhoto = null;
     this.photoBase64 = '';
+  }
+
+  isCancellable(delivery: any): boolean {
+    return ['ASSIGNED', 'PICKED_UP', 'IN_TRANSIT'].includes(delivery.status);
+  }
+
+  openCancelModal(delivery: any): void {
+    this.deliveryIdForCancel = delivery.id;
+    this.cancelReason = '';
+    this.showCancelModal = true;
+  }
+
+  closeCancelModal(): void {
+    this.showCancelModal = false;
+    this.deliveryIdForCancel = null;
+    this.cancelReason = '';
+  }
+
+  confirmCancel(): void {
+    if (!this.deliveryIdForCancel || !this.cancelReason.trim()) {
+      this.errorMessage = 'Debes ingresar el motivo de cancelación';
+      return;
+    }
+    this.showCancelModal = false;
+    this.doUpdateStatus(this.deliveryIdForCancel, 'CANCELLED', this.cancelReason.trim());
+    this.deliveryIdForCancel = null;
+    this.cancelReason = '';
   }
 
   private doUpdateStatus(deliveryId: string, status: string, reason?: string, photo?: string): void {

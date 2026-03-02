@@ -34,7 +34,8 @@ async function main() {
 
     server.addService(paymentProto.PaymentService.service, {
       ProcessPayment: handler.ProcessPayment.bind(handler),
-      GetPaymentByOrder: handler.GetPaymentByOrder.bind(handler)
+      GetPaymentByOrder: handler.GetPaymentByOrder.bind(handler),
+      RefundPayment: handler.RefundPayment.bind(handler)
     });
 
     server.bindAsync(

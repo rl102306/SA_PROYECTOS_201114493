@@ -34,6 +34,15 @@ export class PaymentServiceClient {
       });
     });
   }
+
+  async refundPayment(orderId: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client.RefundPayment({ order_id: orderId }, (error: any, response: any) => {
+        if (error) { reject(error); return; }
+        resolve(response);
+      });
+    });
+  }
 }
 
 export const paymentServiceClient = new PaymentServiceClient();

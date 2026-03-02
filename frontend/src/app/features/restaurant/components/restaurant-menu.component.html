@@ -114,8 +114,8 @@
 
         <!-- Botones de acción según estado -->
         <div class="order-actions">
-          <!-- PENDING: Aceptar o Rechazar -->
-          <ng-container *ngIf="order.status === 'PENDING'">
+          <!-- PAID: orden pagada, esperando que el restaurante la acepte -->
+          <ng-container *ngIf="order.status === 'PAID'">
             <button class="btn btn-accept" (click)="acceptOrder(order)">✅ Aceptar</button>
             <button class="btn btn-reject" (click)="openRejectModal(order)">❌ Rechazar</button>
           </ng-container>
@@ -126,9 +126,14 @@
             <button class="btn btn-reject" (click)="openRejectModal(order)">❌ Rechazar</button>
           </ng-container>
 
-          <!-- PREPARING: Finalizar -->
+          <!-- PREPARING: listo para que lo recoja el repartidor -->
           <ng-container *ngIf="order.status === 'PREPARING'">
-            <button class="btn btn-finish" (click)="finishOrder(order)">🏁 Finalizar entrega</button>
+            <button class="btn btn-finish" (click)="finishOrder(order)">🛵 Listo para entrega</button>
+          </ng-container>
+
+          <!-- IN_DELIVERY: ya está con el repartidor, solo se muestra el estado -->
+          <ng-container *ngIf="order.status === 'IN_DELIVERY'">
+            <span class="status-info">🛵 En camino con el repartidor</span>
           </ng-container>
         </div>
 

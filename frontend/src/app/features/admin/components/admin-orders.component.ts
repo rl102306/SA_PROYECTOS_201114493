@@ -21,6 +21,8 @@ export class AdminOrdersComponent implements OnInit {
 
   // Modal foto
   selectedPhoto: string | null = null;
+  successMessage = '';
+  refundingOrderId: string | null = null;
 
   readonly statusOptions = [
     { value: 'DELIVERED,CANCELLED', label: 'Finalizados y Cancelados' },
@@ -76,6 +78,26 @@ export class AdminOrdersComponent implements OnInit {
 
   closePhoto(): void {
     this.selectedPhoto = null;
+  }
+
+  approveRefund(order: any): void {
+    if (this.refundingOrderId) return;
+    this.refundingOrderId = order.id;
+    this.adminService.approveRefund(order.id).subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          this.successMessage = `Reembolso aprobado para orden #${order.id?.substring(0, 8).toUpperCase()}`;
+          order.refunded = true;
+        } else {
+          this.errorMessage = res.message || 'No se pudo aprobar el reembolso';
+        }
+        this.refundingOrderId = null;
+      },
+      error: (err: any) => {
+        this.errorMessage = err.error?.message || 'Error al aprobar reembolso';
+        this.refundingOrderId = null;
+      }
+    });
   }
 
   logout(): void {

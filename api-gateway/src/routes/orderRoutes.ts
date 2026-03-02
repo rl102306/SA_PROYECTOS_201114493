@@ -40,6 +40,34 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
           createdAt: response.order.created_at
         } : null
       });
+
+      // Enviar notificación de orden creada (no bloqueante)
+      if (response.order) {
+        const order = response.order;
+        const orderNumber = order.id.substring(0, 8).toUpperCase();
+        const products = (order.items || [])
+          .map((i: any) => `${i.quantity}x (Q${i.price})`)
+          .join(', ');
+        const userEmailFromToken = (req as any).user?.email || '';
+
+        authServiceClient.getUserById(userId).then((userResp: any) => {
+          const userEmail = userResp.found ? (userResp.user?.email || userEmailFromToken) : userEmailFromToken;
+          const userName = userResp.found
+            ? `${userResp.user?.first_name || ''} ${userResp.user?.last_name || ''}`.trim() || userEmail
+            : 'Cliente';
+
+          notificationServiceClient.sendOrderCreated({
+            user_id: userId,
+            user_email: userEmail,
+            user_name: userName,
+            order_id: order.id,
+            order_number: orderNumber,
+            products,
+            total_amount: order.total_amount || 0,
+            status: 'CREADA'
+          }).catch(() => {});
+        }).catch(() => {});
+      }
     } else {
       res.status(400).json({
         success: false,

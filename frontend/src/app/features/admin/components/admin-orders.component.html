@@ -37,8 +37,9 @@
     </div>
   </div>
 
-  <!-- Error -->
+  <!-- Mensajes -->
   <div class="alert alert-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
 
   <!-- Loading -->
   <div class="loading-state" *ngIf="isLoading">
@@ -63,8 +64,10 @@
           <th>Productos</th>
           <th>Total</th>
           <th>Estado</th>
+          <th>Cancelado por</th>
           <th>Fecha</th>
           <th>Foto Entrega</th>
+          <th *ngIf="currentUserRole === 'ADMIN'">Reembolso</th>
         </tr>
       </thead>
       <tbody>
@@ -84,6 +87,19 @@
               {{ order.status }}
             </span>
           </td>
+          <td class="cancel-cell">
+            <ng-container *ngIf="order.status === 'CANCELLED'; else noCancellation">
+              <span class="cancel-by-badge"
+                [class.cancel-by-delivery]="order.cancelled_by === 'REPARTIDOR'"
+                [class.cancel-by-restaurant]="order.cancelled_by === 'RESTAURANTE'">
+                {{ order.cancelled_by || '—' }}
+              </span>
+              <div class="cancel-reason" *ngIf="order.cancellation_reason">
+                {{ order.cancellation_reason }}
+              </div>
+            </ng-container>
+            <ng-template #noCancellation><span class="no-photo">—</span></ng-template>
+          </td>
           <td>{{ order.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
           <td class="photo-cell">
             <div *ngIf="order.delivery_photo; else noPhoto">
@@ -98,6 +114,19 @@
             <ng-template #noPhoto>
               <span class="no-photo">—</span>
             </ng-template>
+          </td>
+          <td *ngIf="currentUserRole === 'ADMIN'">
+            <ng-container *ngIf="order.status === 'CANCELLED' && !order.refunded">
+              <button
+                class="btn btn-refund"
+                (click)="approveRefund(order)"
+                [disabled]="refundingOrderId === order.id"
+              >
+                {{ refundingOrderId === order.id ? 'Procesando...' : '💰 Aprobar Reembolso' }}
+              </button>
+            </ng-container>
+            <span *ngIf="order.refunded" class="status-badge status-refunded">Reembolsado</span>
+            <span *ngIf="order.status !== 'CANCELLED' && !order.refunded" class="no-photo">—</span>
           </td>
         </tr>
       </tbody>

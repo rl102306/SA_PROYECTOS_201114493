@@ -36,7 +36,8 @@ export class LoginUserUseCase {
     const token = this.jwtGenerator.generate({
       userId: user.id,
       email: user.email,
-      role: user.role
+      role: user.role,
+      ...(user.restaurantId ? { restaurantId: user.restaurantId } : {})
     });
 
     console.log(`✅ Login exitoso: ${user.email}`);

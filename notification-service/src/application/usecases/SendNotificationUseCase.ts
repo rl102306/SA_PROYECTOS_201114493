@@ -59,9 +59,9 @@ export class SendNotificationUseCase {
             <h2>¡Gracias por tu pedido, ${notification.userName}!</h2>
             <p><strong>Número de Orden:</strong> ${notification.orderNumber}</p>
             <p><strong>Productos:</strong> ${notification.products}</p>
-            <p><strong>Monto Total:</strong> $${notification.totalAmount?.toFixed(2)}</p>
-            <p><strong>Estado:</strong> ${notification.status}</p>
-            <p><strong>Fecha:</strong> ${notification.createdAt.toLocaleString()}</p>
+            <p><strong>Monto Total:</strong> Q${notification.totalAmount?.toFixed(2)}</p>
+            <p><strong>Fecha de creación:</strong> ${notification.createdAt.toLocaleString('es-GT')}</p>
+            <p><strong>Estado:</strong> CREADA</p>
             <hr>
             <p>Te notificaremos cuando tu pedido esté en camino.</p>
           `
@@ -75,8 +75,8 @@ export class SendNotificationUseCase {
             <p>Hola ${notification.userName},</p>
             <p>Tu orden ha sido cancelada exitosamente.</p>
             <p><strong>Productos:</strong> ${notification.products}</p>
-            <p><strong>Fecha de Cancelación:</strong> ${notification.createdAt.toLocaleString()}</p>
-            <p><strong>Estado:</strong> ${notification.status}</p>
+            <p><strong>Fecha de Cancelación:</strong> ${notification.createdAt.toLocaleString('es-GT')}</p>
+            <p><strong>Estado:</strong> CANCELADA</p>
           `
         };
 
@@ -89,7 +89,7 @@ export class SendNotificationUseCase {
             <p><strong>Número de Orden:</strong> ${notification.orderNumber}</p>
             <p><strong>Repartidor:</strong> ${notification.deliveryPersonName}</p>
             <p><strong>Productos:</strong> ${notification.products}</p>
-            <p><strong>Estado:</strong> ${notification.status}</p>
+            <p><strong>Estado:</strong> EN CAMINO</p>
             <p>Tu pedido llegará pronto.</p>
           `
         };
@@ -103,7 +103,7 @@ export class SendNotificationUseCase {
             <p>Lamentamos informarte que ${notification.restaurantName} ha cancelado tu orden.</p>
             <p><strong>Razón:</strong> ${notification.cancellationReason}</p>
             <p><strong>Productos:</strong> ${notification.products}</p>
-            <p><strong>Estado:</strong> ${notification.status}</p>
+            <p><strong>Estado:</strong> CANCELADA</p>
           `
         };
 
@@ -117,7 +117,7 @@ export class SendNotificationUseCase {
             <p><strong>Repartidor:</strong> ${notification.deliveryPersonName}</p>
             <p><strong>Razón:</strong> ${notification.cancellationReason}</p>
             <p><strong>Productos:</strong> ${notification.products}</p>
-            <p><strong>Estado:</strong> ${notification.status}</p>
+            <p><strong>Estado:</strong> CANCELADA</p>
           `
         };
 
@@ -130,7 +130,7 @@ export class SendNotificationUseCase {
             <p>${notification.restaurantName} no pudo procesar tu orden.</p>
             <p><strong>Número de Orden:</strong> ${notification.orderNumber}</p>
             <p><strong>Productos:</strong> ${notification.products}</p>
-            <p><strong>Estado:</strong> ${notification.status}</p>
+            <p><strong>Estado:</strong> RECHAZADA</p>
           `
         };
 
@@ -143,6 +143,7 @@ export class SendNotificationUseCase {
             <p>Tu pedido ha sido entregado exitosamente.</p>
             <p><strong>Número de Orden:</strong> ${notification.orderNumber}</p>
             <p><strong>Productos:</strong> ${notification.products}</p>
+            <p><strong>Estado:</strong> ENTREGADA</p>
             <p>¡Gracias por tu preferencia!</p>
           `
         };
