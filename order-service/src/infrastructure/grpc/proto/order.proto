@@ -7,6 +7,8 @@ service OrderService {
   rpc GetOrder (GetOrderRequest) returns (GetOrderResponse);
   rpc GetUserOrders (GetUserOrdersRequest) returns (GetUserOrdersResponse);
   rpc UpdateOrderStatus (UpdateOrderStatusRequest) returns (UpdateOrderStatusResponse);
+  // Admin: obtener todos los pedidos con filtros (estados válidos: PENDING, CONFIRMED, PREPARING, IN_DELIVERY, DELIVERED, CANCELLED, PAID)
+  rpc GetAllOrders (GetAllOrdersRequest) returns (GetAllOrdersResponse);
 }
 
 message CreateOrderRequest {
@@ -64,4 +66,17 @@ message Order {
   double total_amount = 6;
   string delivery_address = 7;
   string created_at = 8;
+}
+
+message GetAllOrdersRequest {
+  repeated string statuses = 1;  // ej: ["DELIVERED","CANCELLED","PAID"]
+  string date_from = 2;          // ISO 8601
+  string date_to = 3;            // ISO 8601
+  string user_id = 4;            // opcional
+}
+
+message GetAllOrdersResponse {
+  bool success = 1;
+  string message = 2;
+  repeated Order orders = 3;
 }

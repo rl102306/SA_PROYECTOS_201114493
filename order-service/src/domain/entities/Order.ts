@@ -6,7 +6,8 @@ export enum OrderStatus {
   PREPARING = 'PREPARING',
   IN_DELIVERY = 'IN_DELIVERY',
   DELIVERED = 'DELIVERED',
-  CANCELLED = 'CANCELLED'
+  CANCELLED = 'CANCELLED',
+  PAID = 'PAID'
 }
 
 export interface OrderItemProps {

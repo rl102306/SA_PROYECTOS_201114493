@@ -43,12 +43,13 @@ export class DeliveryServiceHandler {
 
   async UpdateDeliveryStatus(call: any, callback: any) {
     try {
-      const { delivery_id, status, cancellation_reason } = call.request;
+      const { delivery_id, status, cancellation_reason, delivery_photo } = call.request;
 
       const delivery = await this.updateDeliveryStatusUseCase.execute({
         deliveryId: delivery_id,
         status,
-        cancellationReason: cancellation_reason
+        cancellationReason: cancellation_reason,
+        deliveryPhoto: delivery_photo
       });
 
       callback(null, {
@@ -154,6 +155,7 @@ export class DeliveryServiceHandler {
       estimated_time: delivery.estimatedTime || 0,
       actual_delivery_time: delivery.actualDeliveryTime?.toISOString() || '',
       cancellation_reason: delivery.cancellationReason || '',
+      delivery_photo: delivery.deliveryPhoto || '',
       created_at: delivery.createdAt.toISOString(),
       updated_at: delivery.updatedAt.toISOString()
     };

@@ -1,0 +1,136 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: order-db-secret
+  namespace: delivereats
+type: Opaque
+stringData:
+  username: order_user
+  password: order_password
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: order-db
+  namespace: delivereats
+spec:
+  serviceName: order-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-db
+  template:
+    metadata:
+      labels:
+        app: order-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: order_db
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: order-db-secret
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: order-db-secret
+                  key: password
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "order_user", "-d", "order_db"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          volumeMounts:
+            - name: order-db-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: order-db-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-db
+  namespace: delivereats
+spec:
+  selector:
+    app: order-db
+  ports:
+    - port: 5432
+      targetPort: 5432
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: delivereats
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+        - name: order-service
+          image: delivereats/order-service:latest
+          ports:
+            - containerPort: 50053
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: GRPC_PORT
+              value: "50053"
+            - name: DB_HOST
+              value: order-db
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: order_db
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: order-db-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: order-db-secret
+                  key: password
+            - name: CATALOG_SERVICE_URL
+              value: catalog-service:50051
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: delivereats
+spec:
+  selector:
+    app: order-service
+  ports:
+    - port: 50053
+      targetPort: 50053

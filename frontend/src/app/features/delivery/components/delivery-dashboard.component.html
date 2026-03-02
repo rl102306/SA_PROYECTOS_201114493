@@ -1,0 +1,134 @@
+<div class="delivery-container">
+  <!-- Header -->
+  <div class="delivery-header">
+    <div>
+      <h1>Panel del Repartidor</h1>
+      <p>Gestiona tus entregas</p>
+    </div>
+    <button class="btn btn-logout" (click)="logout()">Cerrar Sesión</button>
+  </div>
+
+  <!-- Mensajes -->
+  <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
+  <div class="alert alert-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+  <!-- Modal foto para DELIVERED -->
+  <div class="photo-upload-panel" *ngIf="deliveryIdForPhoto">
+    <div class="photo-upload-card">
+      <h3>Foto de Entrega Obligatoria</h3>
+      <p>Para marcar esta entrega como ENTREGADO, debes subir una foto de confirmación.</p>
+
+      <div class="file-input-wrapper">
+        <label for="deliveryPhoto" class="file-label">
+          {{ photoBase64 ? 'Foto seleccionada ✓' : 'Seleccionar Foto' }}
+        </label>
+        <input
+          id="deliveryPhoto"
+          type="file"
+          accept="image/*"
+          (change)="onPhotoSelected($event)"
+          class="file-input"
+        />
+      </div>
+
+      <div class="preview-container" *ngIf="photoBase64">
+        <img [src]="'data:image/jpeg;base64,' + photoBase64" alt="Vista previa" class="photo-preview" />
+      </div>
+
+      <div class="photo-actions">
+        <button class="btn btn-secondary" (click)="cancelPhotoUpload()">Cancelar</button>
+        <button
+          class="btn btn-success"
+          (click)="confirmDelivered()"
+          [disabled]="!photoBase64 || isUpdating"
+        >
+          {{ isUpdating ? 'Confirmando...' : 'Confirmar Entrega' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mis Entregas Activas -->
+  <div class="section-card">
+    <h2>Mis Entregas</h2>
+
+    <div class="loading-state" *ngIf="isLoading">Cargando...</div>
+
+    <div class="empty-state" *ngIf="!isLoading && myDeliveries.length === 0">
+      No tienes entregas asignadas. Acepta una entrega pendiente abajo.
+    </div>
+
+    <div class="delivery-list" *ngIf="!isLoading">
+      <div class="delivery-card" *ngFor="let delivery of myDeliveries">
+        <div class="delivery-card-header">
+          <span class="delivery-id">{{ delivery.id?.substring(0, 8) }}...</span>
+          <span class="status-badge" [class]="'status-' + delivery.status?.toLowerCase()">
+            {{ statusLabels[delivery.status] || delivery.status }}
+          </span>
+        </div>
+
+        <div class="delivery-info">
+          <div><strong>Recogida:</strong> {{ delivery.pickup_address }}</div>
+          <div><strong>Entrega:</strong> {{ delivery.delivery_address }}</div>
+          <div *ngIf="delivery.estimated_time"><strong>Tiempo estimado:</strong> {{ delivery.estimated_time }} min</div>
+        </div>
+
+        <div class="delivery-actions" *ngIf="hasNextStatus(delivery)">
+          <button
+            class="btn btn-action"
+            [class.btn-delivered]="nextStatus[delivery.status] === 'DELIVERED'"
+            (click)="advanceStatus(delivery)"
+            [disabled]="isUpdating"
+          >
+            {{ nextStatusLabel[delivery.status] }}
+          </button>
+        </div>
+
+        <div class="delivered-info" *ngIf="delivery.status === 'DELIVERED'">
+          <span>Entregado el {{ delivery.actual_delivery_time | date:'dd/MM/yyyy HH:mm' }}</span>
+          <div *ngIf="delivery.delivery_photo">
+            <img
+              [src]="'data:image/jpeg;base64,' + delivery.delivery_photo"
+              class="photo-thumbnail"
+              alt="Foto de entrega"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entregas Pendientes (para aceptar) -->
+  <div class="section-card">
+    <h2>Entregas Disponibles</h2>
+
+    <div class="empty-state" *ngIf="pendingDeliveries.length === 0">
+      No hay entregas pendientes en este momento.
+    </div>
+
+    <div class="delivery-list">
+      <div class="delivery-card pending-card" *ngFor="let delivery of pendingDeliveries">
+        <div class="delivery-card-header">
+          <span class="delivery-id">{{ delivery.id?.substring(0, 8) }}...</span>
+          <span class="status-badge status-pending">Disponible</span>
+        </div>
+
+        <div class="delivery-info">
+          <div><strong>Recogida:</strong> {{ delivery.pickup_address }}</div>
+          <div><strong>Entrega:</strong> {{ delivery.delivery_address }}</div>
+          <div *ngIf="delivery.estimated_time"><strong>Tiempo estimado:</strong> {{ delivery.estimated_time }} min</div>
+        </div>
+
+        <div class="delivery-actions">
+          <button
+            class="btn btn-accept"
+            (click)="acceptDelivery(delivery.id)"
+            [disabled]="isUpdating"
+          >
+            Aceptar Entrega
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

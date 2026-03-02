@@ -8,6 +8,8 @@ service NotificationService {
   rpc SendOrderInTransitNotification (OrderInTransitNotificationRequest) returns (NotificationResponse);
   rpc SendOrderRejectedNotification (OrderRejectedNotificationRequest) returns (NotificationResponse);
   rpc SendOrderDeliveredNotification (OrderNotificationRequest) returns (NotificationResponse);
+  rpc SendPaymentConfirmedNotification (PaymentNotificationRequest) returns (NotificationResponse);
+  rpc SendPaymentRefundedNotification (PaymentNotificationRequest) returns (NotificationResponse);
 }
 
 message OrderNotificationRequest {
@@ -55,6 +57,21 @@ message OrderRejectedNotificationRequest {
   string products = 6;
   string restaurant_name = 7;
   string status = 8;
+}
+
+message PaymentNotificationRequest {
+  string user_id = 1;
+  string user_email = 2;
+  string user_name = 3;
+  string order_id = 4;
+  string order_number = 5;
+  double amount = 6;
+  string currency = 7;
+  double amount_gtq = 8;
+  double amount_usd = 9;
+  double exchange_rate = 10;
+  string payment_method = 11;
+  string status = 12;
 }
 
 message NotificationResponse {

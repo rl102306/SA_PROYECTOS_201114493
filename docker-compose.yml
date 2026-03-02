@@ -150,12 +150,18 @@ services:
       AUTH_SERVICE_URL: auth-service:50052
       CATALOG_SERVICE_URL: catalog-service:50051
       ORDER_SERVICE_URL: order-service:50053
+      DELIVERY_SERVICE_URL: delivery-service:50054
+      FX_SERVICE_URL: fx-service:50056
+      PAYMENT_SERVICE_URL: payment-service:50057
       JWT_SECRET: your-super-secret-jwt-key-change-in-production-DeliverEats2026
       CORS_ORIGIN: http://localhost:4200
     depends_on:
       - auth-service
       - catalog-service
       - order-service
+      - delivery-service
+      - fx-service
+      - payment-service
     networks:
       - delivereats-network
     restart: unless-stopped
@@ -219,6 +225,96 @@ services:
     restart: unless-stopped
 
   # ============================================
+  # REDIS (caché para FX-Service)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: delivereats-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - delivereats-network
+    restart: unless-stopped
+
+  # ============================================
+  # PAYMENT DATABASE
+  # ============================================
+  payment-db:
+    image: postgres:15-alpine
+    container_name: delivereats-payment-db
+    environment:
+      POSTGRES_DB: payment_db
+      POSTGRES_USER: payment_user
+      POSTGRES_PASSWORD: payment_password
+    ports:
+      - "5436:5432"
+    volumes:
+      - payment-db-data:/var/lib/postgresql/data
+    networks:
+      - delivereats-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payment_user -d payment_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # FX SERVICE (tipo de cambio con Redis cache)
+  # ============================================
+  fx-service:
+    build:
+      context: ./fx-service
+      dockerfile: Dockerfile
+    container_name: delivereats-fx-service
+    ports:
+      - "50056:50056"
+    environment:
+      NODE_ENV: production
+      GRPC_PORT: 50056
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      EXCHANGE_RATE_API_URL: https://open.er-api.com/v6/latest
+    depends_on:
+      - redis
+    networks:
+      - delivereats-network
+    restart: unless-stopped
+
+  # ============================================
+  # PAYMENT SERVICE
+  # ============================================
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    container_name: delivereats-payment-service
+    ports:
+      - "50057:50057"
+    environment:
+      NODE_ENV: production
+      GRPC_PORT: 50057
+      DB_HOST: payment-db
+      DB_PORT: 5432
+      DB_NAME: payment_db
+      DB_USER: payment_user
+      DB_PASSWORD: payment_password
+      FX_SERVICE_URL: fx-service:50056
+      ORDER_SERVICE_URL: order-service:50053
+      NOTIFICATION_SERVICE_URL: notification-service:50055
+    depends_on:
+      payment-db:
+        condition: service_healthy
+      fx-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+    networks:
+      - delivereats-network
+    restart: unless-stopped
+
+  # ============================================
   # NOTIFICATION SERVICE
   # ============================================
   notification-service:
@@ -253,3 +349,5 @@ volumes:
     name: delivereats-order-db-data
   delivery-db-data:
     name: delivereats-delivery-db-data
+  payment-db-data:
+    name: delivereats-payment-db-data

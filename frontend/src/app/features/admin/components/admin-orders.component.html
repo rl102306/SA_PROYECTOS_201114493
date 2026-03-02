@@ -1,0 +1,114 @@
+<div class="admin-container">
+  <!-- Header -->
+  <div class="admin-header">
+    <div class="header-left">
+      <h1>Panel Administrativo</h1>
+      <p>Pedidos Finalizados y Cancelados</p>
+    </div>
+    <button class="btn btn-logout" (click)="logout()">Cerrar Sesión</button>
+  </div>
+
+  <!-- Filtros -->
+  <div class="filters-card">
+    <h3>Filtros</h3>
+    <div class="filters-row">
+      <div class="filter-group">
+        <label>Estado</label>
+        <select [(ngModel)]="selectedStatus" class="form-control">
+          <option *ngFor="let opt of statusOptions" [value]="opt.value">{{ opt.label }}</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Fecha Desde</label>
+        <input type="date" [(ngModel)]="dateFrom" class="form-control" />
+      </div>
+
+      <div class="filter-group">
+        <label>Fecha Hasta</label>
+        <input type="date" [(ngModel)]="dateTo" class="form-control" />
+      </div>
+
+      <div class="filter-group filter-actions">
+        <button class="btn btn-primary" (click)="loadOrders()" [disabled]="isLoading">
+          {{ isLoading ? 'Buscando...' : 'Buscar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="alert alert-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="isLoading">
+    <p>Cargando pedidos...</p>
+  </div>
+
+  <!-- Tabla de pedidos -->
+  <div class="orders-table-container" *ngIf="!isLoading">
+    <div class="table-header">
+      <span>{{ orders.length }} pedido(s) encontrado(s)</span>
+    </div>
+
+    <div class="empty-state" *ngIf="orders.length === 0">
+      <p>No se encontraron pedidos con los filtros seleccionados.</p>
+    </div>
+
+    <table class="orders-table" *ngIf="orders.length > 0">
+      <thead>
+        <tr>
+          <th>ID Pedido</th>
+          <th>Restaurante</th>
+          <th>Productos</th>
+          <th>Total</th>
+          <th>Estado</th>
+          <th>Fecha</th>
+          <th>Foto Entrega</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let order of orders">
+          <td class="order-id">{{ order.id?.substring(0, 8) }}...</td>
+          <td>{{ order.restaurant_id?.substring(0, 8) }}...</td>
+          <td>
+            <span *ngFor="let item of parseItems(order.items)" class="item-badge">
+              {{ item.productId || item.product_id }} x{{ item.quantity }}
+            </span>
+          </td>
+          <td>
+            <span class="amount-gtq">GTQ {{ order.total_amount | number:'1.2-2' }}</span>
+          </td>
+          <td>
+            <span class="status-badge" [class]="'status-' + order.status?.toLowerCase()">
+              {{ order.status }}
+            </span>
+          </td>
+          <td>{{ order.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
+          <td class="photo-cell">
+            <div *ngIf="order.delivery_photo; else noPhoto">
+              <img
+                [src]="'data:image/jpeg;base64,' + order.delivery_photo"
+                class="photo-thumbnail"
+                alt="Foto de entrega"
+                (click)="openPhoto(order.delivery_photo)"
+                title="Click para ver completa"
+              />
+            </div>
+            <ng-template #noPhoto>
+              <span class="no-photo">—</span>
+            </ng-template>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Modal foto completa -->
+  <div class="photo-modal" *ngIf="selectedPhoto" (click)="closePhoto()">
+    <div class="photo-modal-content" (click)="$event.stopPropagation()">
+      <button class="modal-close" (click)="closePhoto()">✕</button>
+      <img [src]="'data:image/jpeg;base64,' + selectedPhoto" alt="Foto de entrega" />
+    </div>
+  </div>
+</div>

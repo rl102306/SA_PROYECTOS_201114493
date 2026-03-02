@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-db
+  namespace: delivereats
+spec:
+  selector:
+    app: auth-db
+  ports:
+    - port: 5432
+      targetPort: 5432
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: delivereats
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+        - name: auth-service
+          image: delivereats/auth-service:latest
+          ports:
+            - containerPort: 50052
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: GRPC_PORT
+              value: "50052"
+            - name: DB_HOST
+              value: auth-db
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: auth_db
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: auth-db-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: auth-db-secret
+                  key: password
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secret
+                  key: jwt-secret
+            - name: JWT_EXPIRES_IN
+              value: 24h
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: delivereats
+spec:
+  selector:
+    app: auth-service
+  ports:
+    - port: 50052
+      targetPort: 50052

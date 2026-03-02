@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package payment;
+
+service PaymentService {
+  // Procesar un pago simulado (tarjeta crédito/débito o cartera digital)
+  rpc ProcessPayment (ProcessPaymentRequest) returns (PaymentResponse);
+  // Obtener pago por ID de orden
+  rpc GetPaymentByOrder (GetPaymentByOrderRequest) returns (PaymentResponse);
+}
+
+message ProcessPaymentRequest {
+  string order_id = 1;
+  double amount = 2;
+  string currency = 3;         // "GTQ" | "USD"
+  string payment_method = 4;   // "CREDIT_CARD" | "DEBIT_CARD" | "DIGITAL_WALLET"
+  string card_holder = 5;      // para tarjetas
+  string card_last_four = 6;   // últimos 4 dígitos
+  string wallet_id = 7;        // para cartera digital
+  string user_email = 8;       // para notificación por email
+  string user_name = 9;        // nombre del usuario
+  string user_id = 10;         // ID del usuario
+}
+
+message GetPaymentByOrderRequest {
+  string order_id = 1;
+}
+
+message Payment {
+  string id = 1;
+  string order_id = 2;
+  double amount = 3;
+  string currency = 4;
+  double amount_gtq = 5;
+  double amount_usd = 6;
+  double exchange_rate = 7;
+  string payment_method = 8;
+  string status = 9;        // "COMPLETED" | "FAILED"
+  string created_at = 10;
+}
+
+message PaymentResponse {
+  bool success = 1;
+  string message = 2;
+  Payment payment = 3;
+}

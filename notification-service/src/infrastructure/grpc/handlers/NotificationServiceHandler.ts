@@ -128,4 +128,58 @@ export class NotificationServiceHandler {
       callback(null, { success: false, message: error.message });
     }
   }
+
+  async SendPaymentConfirmedNotification(call: any, callback: any) {
+    try {
+      const request = call.request;
+
+      await this.sendNotificationUseCase.execute({
+        userId: request.user_id,
+        userEmail: request.user_email,
+        userName: request.user_name,
+        type: NotificationType.PAYMENT_CONFIRMED,
+        orderId: request.order_id,
+        orderNumber: request.order_number,
+        products: '',
+        amountGtq: request.amount_gtq,
+        amountUsd: request.amount_usd,
+        exchangeRate: request.exchange_rate,
+        paymentMethod: request.payment_method,
+        currency: request.currency,
+        status: request.status
+      });
+
+      callback(null, { success: true, message: 'Notificación de pago enviada' });
+    } catch (error: any) {
+      console.error('❌ Error en SendPaymentConfirmedNotification:', error);
+      callback(null, { success: false, message: error.message });
+    }
+  }
+
+  async SendPaymentRefundedNotification(call: any, callback: any) {
+    try {
+      const request = call.request;
+
+      await this.sendNotificationUseCase.execute({
+        userId: request.user_id,
+        userEmail: request.user_email,
+        userName: request.user_name,
+        type: NotificationType.PAYMENT_REFUNDED,
+        orderId: request.order_id,
+        orderNumber: request.order_number,
+        products: '',
+        amountGtq: request.amount_gtq,
+        amountUsd: request.amount_usd,
+        exchangeRate: request.exchange_rate,
+        paymentMethod: request.payment_method,
+        currency: request.currency,
+        status: request.status
+      });
+
+      callback(null, { success: true, message: 'Notificación de reembolso enviada' });
+    } catch (error: any) {
+      console.error('❌ Error en SendPaymentRefundedNotification:', error);
+      callback(null, { success: false, message: error.message });
+    }
+  }
 }
