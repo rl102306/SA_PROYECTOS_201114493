@@ -2,7 +2,7 @@
   <!-- Header -->
   <div class="admin-header">
     <div class="header-left">
-      <h1>Panel Administrativo</h1>
+      <h1>{{ currentUserRole === 'RESTAURANT' ? 'Panel de Restaurante' : 'Panel Administrativo' }}</h1>
       <p>Pedidos Finalizados y Cancelados</p>
     </div>
     <button class="btn btn-logout" (click)="logout()">Cerrar Sesión</button>

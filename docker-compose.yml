@@ -153,6 +153,7 @@ services:
       DELIVERY_SERVICE_URL: delivery-service:50054
       FX_SERVICE_URL: fx-service:50056
       PAYMENT_SERVICE_URL: payment-service:50057
+      NOTIFICATION_SERVICE_URL: notification-service:50055
       JWT_SECRET: your-super-secret-jwt-key-change-in-production-DeliverEats2026
       CORS_ORIGIN: http://localhost:4200
     depends_on:
@@ -162,6 +163,7 @@ services:
       - delivery-service
       - fx-service
       - payment-service
+      - notification-service
     networks:
       - delivereats-network
     restart: unless-stopped

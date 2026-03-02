@@ -12,6 +12,7 @@ export class AdminOrdersComponent implements OnInit {
   orders: any[] = [];
   isLoading = false;
   errorMessage = '';
+  currentUserRole = '';
 
   // Filtros
   selectedStatus = 'DELIVERED,CANCELLED';
@@ -36,6 +37,8 @@ export class AdminOrdersComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    const user = this.authService.getCurrentUser();
+    this.currentUserRole = user?.role || '';
     this.loadOrders();
   }
 

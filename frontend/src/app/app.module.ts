@@ -12,8 +12,10 @@ import { CreateOrderComponent } from './features/client/components/create-order.
 import { ViewCatalogComponent } from './features/client/components/view-catalog.component';
 import { AdminOrdersComponent } from './features/admin/components/admin-orders.component';
 import { DeliveryDashboardComponent } from './features/delivery/components/delivery-dashboard.component';
+import { RestaurantMenuComponent } from './features/restaurant/components/restaurant-menu.component';
 import { AdminGuard } from './core/guards/admin.guard';
 import { DeliveryGuard } from './core/guards/delivery.guard';
+import { RestaurantGuard } from './core/guards/restaurant.guard';
 
 const routes: Routes = [
   { path: '', redirectTo: '/login', pathMatch: 'full' },
@@ -24,6 +26,7 @@ const routes: Routes = [
   { path: 'client/orders', component: CreateOrderComponent },
   { path: 'admin/orders', component: AdminOrdersComponent, canActivate: [AdminGuard] },
   { path: 'delivery/dashboard', component: DeliveryDashboardComponent, canActivate: [DeliveryGuard] },
+  { path: 'restaurant/menu', component: RestaurantMenuComponent, canActivate: [RestaurantGuard] },
   { path: '**', redirectTo: '/login' }
 ];
 
@@ -35,7 +38,8 @@ const routes: Routes = [
     CreateOrderComponent,
     ViewCatalogComponent,
     AdminOrdersComponent,
-    DeliveryDashboardComponent
+    DeliveryDashboardComponent,
+    RestaurantMenuComponent
   ],
   imports: [
     BrowserModule,
@@ -45,7 +49,7 @@ const routes: Routes = [
     FormsModule,
     RouterModule.forRoot(routes)
   ],
-  providers: [AdminGuard, DeliveryGuard],
+  providers: [AdminGuard, DeliveryGuard, RestaurantGuard],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

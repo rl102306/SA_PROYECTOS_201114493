@@ -6,6 +6,7 @@ export interface GetAllOrdersDTO {
   dateFrom?: string;
   dateTo?: string;
   userId?: string;
+  restaurantId?: string;
 }
 
 export class GetAllOrdersUseCase {
@@ -25,6 +26,9 @@ export class GetAllOrdersUseCase {
     }
     if (dto.userId) {
       filters.userId = dto.userId;
+    }
+    if (dto.restaurantId) {
+      filters.restaurantId = dto.restaurantId;
     }
 
     return await this.orderRepository.findAll(filters);

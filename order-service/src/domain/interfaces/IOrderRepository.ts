@@ -5,6 +5,7 @@ export interface OrderFilters {
   dateFrom?: Date;
   dateTo?: Date;
   userId?: string;
+  restaurantId?: string;
 }
 
 export interface IOrderRepository {

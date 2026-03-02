@@ -7,6 +7,10 @@ service CatalogService {
   rpc GetProduct (GetProductRequest) returns (GetProductResponse);
   rpc GetRestaurantCatalog (GetRestaurantCatalogRequest) returns (GetRestaurantCatalogResponse);
   rpc ListRestaurants (ListRestaurantsRequest) returns (ListRestaurantsResponse);
+  rpc CreateProduct (CreateProductRequest) returns (ProductResponse);
+  rpc UpdateProduct (UpdateProductRequest) returns (ProductResponse);
+  rpc DeleteProduct (DeleteProductRequest) returns (DeleteProductResponse);
+  rpc CreateRestaurant (CreateRestaurantRequest) returns (CreateRestaurantResponse);
 }
 
 message ValidationRequest {
@@ -76,4 +80,51 @@ message RestaurantMessage {
 
 message ListRestaurantsResponse {
   repeated RestaurantMessage restaurants = 1;
+}
+
+// CRUD de productos
+message CreateProductRequest {
+  string restaurant_id = 1;
+  string name = 2;
+  string description = 3;
+  double price = 4;
+  string category = 5;
+  bool is_available = 6;
+}
+
+message UpdateProductRequest {
+  string id = 1;
+  string restaurant_id = 2;
+  string name = 3;
+  string description = 4;
+  double price = 5;
+  string category = 6;
+  bool is_available = 7;
+}
+
+message ProductResponse {
+  bool success = 1;
+  string message = 2;
+  Product product = 3;
+}
+
+message DeleteProductRequest {
+  string id = 1;
+  string restaurant_id = 2;
+}
+
+message DeleteProductResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message CreateRestaurantRequest {
+  string id = 1;
+  string name = 2;
+  string email = 3;
+}
+
+message CreateRestaurantResponse {
+  bool success = 1;
+  string message = 2;
 }

@@ -39,7 +39,6 @@ export class User {
     this._updatedAt = props.updatedAt || new Date();
   }
 
-  // Getters
   get id(): string { return this._id; }
   get email(): string { return this._email; }
   get password(): string { return this._password; }
@@ -49,7 +48,6 @@ export class User {
   get createdAt(): Date { return this._createdAt; }
   get updatedAt(): Date { return this._updatedAt; }
 
-  // Métodos de dominio
   updatePassword(newPassword: string): void {
     this._password = newPassword;
     this._updatedAt = new Date();

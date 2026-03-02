@@ -6,28 +6,14 @@ export class PostgresUserRepository implements IUserRepository {
   constructor(private readonly pool: Pool) {}
 
   async findById(id: string): Promise<User | null> {
-    const result = await this.pool.query(
-      'SELECT * FROM users WHERE id = $1',
-      [id]
-    );
-
-    if (result.rows.length === 0) {
-      return null;
-    }
-
+    const result = await this.pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    if (result.rows.length === 0) return null;
     return this.mapToEntity(result.rows[0]);
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const result = await this.pool.query(
-      'SELECT * FROM users WHERE email = $1',
-      [email]
-    );
-
-    if (result.rows.length === 0) {
-      return null;
-    }
-
+    const result = await this.pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (result.rows.length === 0) return null;
     return this.mapToEntity(result.rows[0]);
   }
 
@@ -44,26 +30,18 @@ export class PostgresUserRepository implements IUserRepository {
         updated_at = EXCLUDED.updated_at
       RETURNING *
     `;
-
     const values = [
-      user.id,
-      user.email,
-      user.password,
-      user.firstName,
-      user.lastName,
-      user.role,
-      user.createdAt,
-      user.updatedAt
+      user.id, user.email, user.password,
+      user.firstName, user.lastName, user.role,
+      user.createdAt, user.updatedAt
     ];
-
     const result = await this.pool.query(query, values);
     return this.mapToEntity(result.rows[0]);
   }
 
   async existsByEmail(email: string): Promise<boolean> {
     const result = await this.pool.query(
-      'SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)',
-      [email]
+      'SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)', [email]
     );
     return result.rows[0].exists;
   }

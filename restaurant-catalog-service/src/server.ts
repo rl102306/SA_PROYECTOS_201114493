@@ -42,7 +42,11 @@ async function startServer() {
     ValidateOrder: handler.ValidateOrder.bind(handler),
     GetProduct: handler.GetProduct.bind(handler),
     GetRestaurantCatalog: handler.GetRestaurantCatalog.bind(handler),
-    ListRestaurants: handler.ListRestaurants.bind(handler)
+    ListRestaurants: handler.ListRestaurants.bind(handler),
+    CreateProduct: handler.CreateProduct.bind(handler),
+    UpdateProduct: handler.UpdateProduct.bind(handler),
+    DeleteProduct: handler.DeleteProduct.bind(handler),
+    CreateRestaurant: handler.CreateRestaurant.bind(handler)
   });
 
   server.bindAsync(

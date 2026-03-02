@@ -57,4 +57,10 @@ export class OrderService {
       headers: this.getHeaders()
     });
   }
+
+  cancelOrder(orderId: string): Observable<any> {
+    return this.http.patch<any>(`${this.apiUrl}/${orderId}/cancel`, {}, {
+      headers: this.getHeaders()
+    });
+  }
 }

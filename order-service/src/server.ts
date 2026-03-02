@@ -37,7 +37,11 @@ function mapOrderToGrpc(order: Order): any {
     id: order.id,
     user_id: order.userId,
     restaurant_id: order.restaurantId,
-    items: JSON.stringify(order.items),
+    items: order.items.map(item => ({
+      product_id: item.productId,
+      quantity: item.quantity,
+      price: item.price
+    })),
     status: order.status,
     total_amount: order.totalAmount,
     delivery_address: order.deliveryAddress || '',
@@ -88,16 +92,7 @@ async function main() {
           callback(null, {
             success: true,
             message: 'Orden creada exitosamente',
-            order: {
-              id: order.id,
-              user_id: order.userId,
-              restaurant_id: order.restaurantId,
-              items: JSON.stringify(order.items),
-              status: order.status,
-              total_amount: order.totalAmount,
-              delivery_address: order.deliveryAddress,
-              created_at: order.createdAt.toISOString()
-            }
+            order: mapOrderToGrpc(order)
           });
         } catch (error: any) {
           callback(null, {
@@ -155,7 +150,8 @@ async function main() {
             statuses: call.request.statuses,
             dateFrom: call.request.date_from,
             dateTo: call.request.date_to,
-            userId: call.request.user_id
+            userId: call.request.user_id,
+            restaurantId: call.request.restaurant_id
           });
           callback(null, {
             success: true,

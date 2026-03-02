@@ -45,6 +45,42 @@ export class CatalogServiceClient {
       });
     });
   }
+
+  async createProduct(data: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client.CreateProduct(data, (error: any, response: any) => {
+        if (error) { reject(error); return; }
+        resolve(response);
+      });
+    });
+  }
+
+  async updateProduct(data: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client.UpdateProduct(data, (error: any, response: any) => {
+        if (error) { reject(error); return; }
+        resolve(response);
+      });
+    });
+  }
+
+  async deleteProduct(id: string, restaurantId: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client.DeleteProduct({ id, restaurant_id: restaurantId }, (error: any, response: any) => {
+        if (error) { reject(error); return; }
+        resolve(response);
+      });
+    });
+  }
+
+  async createRestaurant(data: { id: string; name: string; email: string }): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client.CreateRestaurant(data, (error: any, response: any) => {
+        if (error) { reject(error); return; }
+        resolve(response);
+      });
+    });
+  }
 }
 
 export const catalogServiceClient = new CatalogServiceClient();

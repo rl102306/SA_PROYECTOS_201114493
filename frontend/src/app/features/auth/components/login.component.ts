@@ -38,12 +38,14 @@ export class LoginComponent {
           console.log('✅ Login exitoso');
           const role = this.authService.getCurrentUser()?.role;
 
-          if (role === 'ADMIN' || role === 'RESTAURANT') {
+          if (role === 'ADMIN') {
             this.router.navigate(['/admin/orders']);
+          } else if (role === 'RESTAURANT') {
+            this.router.navigate(['/restaurant/menu']);
           } else if (role === 'DELIVERY') {
             this.router.navigate(['/delivery/dashboard']);
           } else {
-            this.router.navigate(['/client/create-order']);
+            this.router.navigate(['/client/catalog']);
           }
         } else {
           this.errorMessage = response.message || 'Error al iniciar sesión';

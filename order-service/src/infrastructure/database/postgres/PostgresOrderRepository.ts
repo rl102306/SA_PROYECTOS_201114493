@@ -88,6 +88,10 @@ export class PostgresOrderRepository implements IOrderRepository {
       conditions.push(`user_id = $${idx++}`);
       values.push(filters.userId);
     }
+    if (filters.restaurantId) {
+      conditions.push(`restaurant_id = $${idx++}`);
+      values.push(filters.restaurantId);
+    }
 
     const WHERE = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const result = await this.pool.query(

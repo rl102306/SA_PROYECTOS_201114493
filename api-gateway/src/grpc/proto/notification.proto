@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package notification;
+
+service NotificationService {
+  rpc SendOrderCreatedNotification (OrderNotificationRequest) returns (NotificationResponse);
+  rpc SendOrderCancelledNotification (OrderCancelledNotificationRequest) returns (NotificationResponse);
+  rpc SendOrderInTransitNotification (OrderInTransitNotificationRequest) returns (NotificationResponse);
+  rpc SendOrderRejectedNotification (OrderRejectedNotificationRequest) returns (NotificationResponse);
+  rpc SendOrderDeliveredNotification (OrderNotificationRequest) returns (NotificationResponse);
+  rpc SendPaymentConfirmedNotification (PaymentNotificationRequest) returns (NotificationResponse);
+  rpc SendPaymentRefundedNotification (PaymentNotificationRequest) returns (NotificationResponse);
+}
+
+message OrderNotificationRequest {
+  string user_id = 1;
+  string user_email = 2;
+  string user_name = 3;
+  string order_id = 4;
+  string order_number = 5;
+  string products = 6;
+  double total_amount = 7;
+  string status = 8;
+}
+
+message OrderCancelledNotificationRequest {
+  string user_id = 1;
+  string user_email = 2;
+  string user_name = 3;
+  string order_id = 4;
+  string order_number = 5;
+  string products = 6;
+  string status = 7;
+  string cancelled_by = 8;
+  string cancellation_reason = 9;
+  string restaurant_name = 10;
+  string delivery_person_name = 11;
+}
+
+message OrderInTransitNotificationRequest {
+  string user_id = 1;
+  string user_email = 2;
+  string user_name = 3;
+  string order_id = 4;
+  string order_number = 5;
+  string products = 6;
+  string delivery_person_name = 7;
+  string status = 8;
+}
+
+message OrderRejectedNotificationRequest {
+  string user_id = 1;
+  string user_email = 2;
+  string user_name = 3;
+  string order_id = 4;
+  string order_number = 5;
+  string products = 6;
+  string restaurant_name = 7;
+  string status = 8;
+}
+
+message PaymentNotificationRequest {
+  string user_id = 1;
+  string user_email = 2;
+  string user_name = 3;
+  string order_id = 4;
+  string order_number = 5;
+  double amount = 6;
+  string currency = 7;
+  double amount_gtq = 8;
+  double amount_usd = 9;
+  double exchange_rate = 10;
+  string payment_method = 11;
+  string status = 12;
+}
+
+message NotificationResponse {
+  bool success = 1;
+  string message = 2;
+}
