@@ -10,9 +10,10 @@ import { Restaurant, Product } from '../../../shared/models/restaurant.model';
 })
 export class ViewCatalogComponent implements OnInit {
   restaurants: Restaurant[] = [];
-  allProducts: Product[] = [];
+  products: Product[] = [];
   selectedRestaurantId: string = '';
-  filteredProducts: Product[] = [];
+  isLoading: boolean = false;
+  errorMessage: string = '';
 
   constructor(
     private catalogService: CatalogService,
@@ -21,35 +22,44 @@ export class ViewCatalogComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadRestaurants();
-    this.loadAllProducts();
   }
 
   loadRestaurants(): void {
-    this.catalogService.getRestaurants().subscribe(restaurants => {
-      this.restaurants = restaurants;
-    });
-  }
-
-  loadAllProducts(): void {
-    this.catalogService.getAllProducts().subscribe(products => {
-      this.allProducts = products;
-      this.filteredProducts = products;
+    this.isLoading = true;
+    this.catalogService.getRestaurants().subscribe({
+      next: (restaurants) => {
+        this.restaurants = restaurants;
+        this.isLoading = false;
+      },
+      error: () => {
+        this.errorMessage = 'Error al cargar restaurantes';
+        this.isLoading = false;
+      }
     });
   }
 
   onRestaurantFilter(): void {
-    if (this.selectedRestaurantId) {
-      this.filteredProducts = this.allProducts.filter(
-        p => p.restaurantId === this.selectedRestaurantId
-      );
-    } else {
-      this.filteredProducts = this.allProducts;
+    if (!this.selectedRestaurantId) {
+      this.products = [];
+      return;
     }
+    this.isLoading = true;
+    this.errorMessage = '';
+    this.catalogService.getProductsByRestaurant(this.selectedRestaurantId).subscribe({
+      next: (products) => {
+        this.products = products;
+        this.isLoading = false;
+      },
+      error: () => {
+        this.errorMessage = 'Error al cargar productos';
+        this.isLoading = false;
+      }
+    });
   }
 
   getRestaurantName(restaurantId: string): string {
     const restaurant = this.restaurants.find(r => r.id === restaurantId);
-    return restaurant ? restaurant.name : 'Desconocido';
+    return restaurant ? restaurant.name : '';
   }
 
   goToCreateOrder(): void {

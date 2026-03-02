@@ -1,48 +1,13 @@
 <div class="order-container">
   <div class="order-header">
-    <h1>🍕 Crear Nueva Orden</h1>
+    <h1>Crear Nueva Orden</h1>
     <div class="header-buttons">
-      <button class="btn btn-info" (click)="toggleCatalog()">
-        {{ showCatalog ? '❌ Cerrar' : '📋 Ver Catálogo' }}
+      <button class="btn btn-info" (click)="goToCatalog()">
+        Ver Catálogo
       </button>
       <button class="btn btn-secondary" (click)="logout()">
         Cerrar Sesión
       </button>
-    </div>
-  </div>
-
-  <!-- ================== CATÁLOGO ================== -->
-  <div class="catalog-modal" *ngIf="showCatalog">
-    <div class="catalog-content">
-      <h2>📋 Catálogo de Productos</h2>
-
-      <div *ngIf="!selectedRestaurantId" class="empty-catalog">
-        <p>⚠️ Primero selecciona un restaurante</p>
-      </div>
-
-      <div *ngIf="selectedRestaurantId" class="catalog-list">
-        <div
-          *ngFor="let product of restaurantProducts"
-          class="catalog-item"
-          [class.unavailable]="!product.available"
-        >
-          <div class="product-info">
-            <h4>{{ product.name }}</h4>
-            <p class="product-price">
-              ${{ product.price.toFixed(2) }}
-            </p>
-
-            <p *ngIf="!product.available" class="product-status">
-              ❌ No disponible
-            </p>
-            <p *ngIf="product.available" class="product-status success">
-              ✅ Disponible
-            </p>
-          </div>
-
-          <small>ID: {{ product.id }}</small>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -124,7 +89,7 @@
                       *ngFor="let product of restaurantProducts"
                       [value]="product.id"
                     >
-                      {{ product.name }} - ${{ product.price.toFixed(2) }}
+                      {{ product.name }} - Q{{ product.price.toFixed(2) }}
                     </option>
                   </select>
                 </div>
@@ -186,7 +151,7 @@
               </div>
 
               <div class="item-total">
-                ${{
+                Q{{
                   (item.get('quantity')?.value || 0) *
                   (item.get('price')?.value || 0)
                 }}
@@ -213,7 +178,7 @@
 
       <!-- ================== TOTAL ================== -->
       <div class="order-total" *ngIf="items.length > 0">
-        <h3>Total: ${{ getTotalAmount().toFixed(2) }}</h3>
+        <h3>Total: Q{{ getTotalAmount().toFixed(2) }}</h3>
       </div>
 
       <!-- Mensajes -->
@@ -231,7 +196,7 @@
         class="btn btn-primary btn-block btn-lg"
         [disabled]="orderForm.invalid || items.length === 0 || isLoading"
       >
-        <span *ngIf="!isLoading">🚀 Realizar Pedido</span>
+        <span *ngIf="!isLoading">Realizar Pedido</span>
         <span *ngIf="isLoading">⏳ Validando...</span>
       </button>
 

@@ -38,7 +38,7 @@ export class LoginComponent {
           console.log('✅ Login exitoso');
           const role = this.authService.getCurrentUser()?.role;
 
-          if (role === 'ADMIN') {
+          if (role === 'ADMIN' || role === 'RESTAURANT') {
             this.router.navigate(['/admin/orders']);
           } else if (role === 'DELIVERY') {
             this.router.navigate(['/delivery/dashboard']);
@@ -59,6 +59,6 @@ export class LoginComponent {
   }
 
   goToRegister(): void {
-    this.router.navigate(['/auth/register']);
+    this.router.navigate(['/register']);
   }
 }

@@ -22,6 +22,20 @@ export const createDatabasePool = (): Pool => {
 
 export const initializeDatabase = async (pool: Pool): Promise<void> => {
   const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS restaurants (
+      id UUID PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      address VARCHAR(255),
+      phone VARCHAR(50),
+      email VARCHAR(255),
+      schedule VARCHAR(255),
+      description TEXT,
+      image_url TEXT,
+      is_active BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS products (
       id UUID PRIMARY KEY,
       restaurant_id UUID NOT NULL,

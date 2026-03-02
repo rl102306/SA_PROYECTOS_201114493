@@ -1,6 +1,8 @@
 import { Pool } from 'pg';
 import { IProductRepository } from '../../domain/interfaces/IProductRepository';
+import { IRestaurantRepository } from '../../domain/interfaces/IRestaurantRepository';
 import { PostgresProductRepository } from '../database/postgres/PostgresProductRepository';
+import { PostgresRestaurantRepository } from '../database/postgres/PostgresRestaurantRepository';
 import { ValidateOrderUseCase } from '../../application/usecases/ValidateOrderUseCase';
 import { CatalogServiceHandler } from '../grpc/handlers/CatalogServiceHandler';
 
@@ -20,7 +22,9 @@ export class DIContainer {
   register(pool: Pool): void {
     // Repositories
     const productRepository: IProductRepository = new PostgresProductRepository(pool);
+    const restaurantRepository: IRestaurantRepository = new PostgresRestaurantRepository(pool);
     this.services.set('ProductRepository', productRepository);
+    this.services.set('RestaurantRepository', restaurantRepository);
 
     // Use Cases
     const validateOrderUseCase = new ValidateOrderUseCase(productRepository);
@@ -29,7 +33,8 @@ export class DIContainer {
     // Handlers
     const catalogServiceHandler = new CatalogServiceHandler(
       validateOrderUseCase,
-      productRepository
+      productRepository,
+      restaurantRepository
     );
     this.services.set('CatalogServiceHandler', catalogServiceHandler);
   }

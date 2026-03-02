@@ -41,7 +41,8 @@ async function startServer() {
   server.addService(catalogProto.CatalogService.service, {
     ValidateOrder: handler.ValidateOrder.bind(handler),
     GetProduct: handler.GetProduct.bind(handler),
-    GetRestaurantCatalog: handler.GetRestaurantCatalog.bind(handler)
+    GetRestaurantCatalog: handler.GetRestaurantCatalog.bind(handler),
+    ListRestaurants: handler.ListRestaurants.bind(handler)
   });
 
   server.bindAsync(

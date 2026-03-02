@@ -1,10 +1,12 @@
 import { ValidateOrderUseCase } from '../../../application/usecases/ValidateOrderUseCase';
 import { IProductRepository } from '../../../domain/interfaces/IProductRepository';
+import { IRestaurantRepository } from '../../../domain/interfaces/IRestaurantRepository';
 
 export class CatalogServiceHandler {
   constructor(
     private readonly validateOrderUseCase: ValidateOrderUseCase,
-    private readonly productRepository: IProductRepository
+    private readonly productRepository: IProductRepository,
+    private readonly restaurantRepository: IRestaurantRepository
   ) {}
 
   async ValidateOrder(call: any, callback: any) {
@@ -106,6 +108,31 @@ export class CatalogServiceHandler {
         code: 13,
         message: 'Error interno del servidor'
       });
+    }
+  }
+
+  async ListRestaurants(call: any, callback: any) {
+    try {
+      const { active_only } = call.request;
+
+      const restaurants = active_only
+        ? await this.restaurantRepository.findActive()
+        : await this.restaurantRepository.findAll();
+
+      const restaurantMessages = restaurants.map(r => ({
+        id: r.id,
+        name: r.name,
+        address: r.address,
+        phone: r.phone,
+        email: r.email,
+        description: r.description || '',
+        is_active: r.isActive
+      }));
+
+      callback(null, { restaurants: restaurantMessages });
+    } catch (error) {
+      console.error('❌ Error en ListRestaurants:', error);
+      callback({ code: 13, message: 'Error interno del servidor' });
     }
   }
 }

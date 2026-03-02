@@ -16,7 +16,6 @@ export class CreateOrderComponent implements OnInit {
   successMessage: string = '';
   isLoading: boolean = false;
   currentUser: any;
-  showCatalog: boolean = false;
 
   availableRestaurants = [
     { id: '99999999-9999-9999-9999-999999999999', name: 'Restaurante Central', type: 'Comida Variada' },
@@ -116,8 +115,8 @@ export class CreateOrderComponent implements OnInit {
     }, 0);
   }
 
-  toggleCatalog(): void {
-    this.showCatalog = !this.showCatalog;
+  goToCatalog(): void {
+    this.router.navigate(['/client/catalog']);
   }
 
   onSubmit(): void {
