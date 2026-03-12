@@ -309,3 +309,10 @@
 }
 .btn-approve:hover:not(:disabled) { background: #2f855a; }
 .btn-approve:disabled { background: #a0aec0; cursor: not-allowed; }
+
+.tab-panel-wrapper {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}

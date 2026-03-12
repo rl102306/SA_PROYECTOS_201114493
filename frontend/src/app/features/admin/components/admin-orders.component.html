@@ -99,7 +99,7 @@
             </td>
             <td>
               <span class="status-badge" [class]="'status-' + order.status?.toLowerCase()">
-                {{ order.status }}
+                {{ statusLabel(order.status) }}
               </span>
             </td>
             <td class="cancel-cell">
@@ -140,8 +140,7 @@
                   {{ refundingOrderId === order.id ? 'Procesando...' : '💰 Aprobar Reembolso' }}
                 </button>
               </ng-container>
-              <span *ngIf="order.refunded" class="status-badge status-refunded">Reembolsado</span>
-              <span *ngIf="order.status !== 'CANCELLED' && !order.refunded" class="no-photo">—</span>
+              <span *ngIf="order.status !== 'CANCELLED' && order.status !== 'REFUNDED'" class="no-photo">—</span>
             </td>
           </tr>
         </tbody>
@@ -218,6 +217,7 @@
     </div>
 
   </ng-container>
+  </div><!-- /tab-panel-wrapper -->
 
   <!-- Modal foto completa -->
   <div class="photo-modal" *ngIf="selectedPhoto" (click)="closePhoto()">

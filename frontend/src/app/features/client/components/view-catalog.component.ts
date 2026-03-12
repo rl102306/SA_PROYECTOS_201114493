@@ -342,7 +342,7 @@ export class ViewCatalogComponent implements OnInit {
     const map: Record<string, string> = {
       PENDING: 'Pendiente', CONFIRMED: 'Confirmado', PREPARING: 'Preparando',
       IN_DELIVERY: 'En camino', DELIVERED: 'Entregado',
-      CANCELLED: 'Cancelado', PAID: 'Pagado'
+      CANCELLED: 'Cancelado', PAID: 'Pagado', REFUNDED: 'Reembolsado'
     };
     return map[status] || status;
   }
@@ -351,7 +351,7 @@ export class ViewCatalogComponent implements OnInit {
     const map: Record<string, string> = {
       PENDING: 'status-pending', CONFIRMED: 'status-confirmed', PREPARING: 'status-preparing',
       IN_DELIVERY: 'status-delivery', DELIVERED: 'status-delivered',
-      CANCELLED: 'status-cancelled', PAID: 'status-paid'
+      CANCELLED: 'status-cancelled', PAID: 'status-paid', REFUNDED: 'status-refunded'
     };
     return map[status] || '';
   }

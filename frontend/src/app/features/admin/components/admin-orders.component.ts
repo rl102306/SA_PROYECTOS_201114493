@@ -125,6 +125,7 @@ export class AdminOrdersComponent implements OnInit {
         if (res.success) {
           this.successMessage = `Reembolso aprobado para orden #${order.id?.substring(0, 8).toUpperCase()}`;
           order.refunded = true;
+          order.status = 'REFUNDED';
         } else {
           this.errorMessage = res.message || 'No se pudo aprobar el reembolso';
         }
@@ -135,6 +136,15 @@ export class AdminOrdersComponent implements OnInit {
         this.refundingOrderId = null;
       }
     });
+  }
+
+  statusLabel(status: string): string {
+    const map: Record<string, string> = {
+      PENDING: 'Pendiente', CONFIRMED: 'Confirmado', PREPARING: 'Preparando',
+      IN_DELIVERY: 'En camino', DELIVERED: 'Entregado',
+      CANCELLED: 'Cancelado', PAID: 'Pagado', REFUNDED: 'Reembolsado'
+    };
+    return map[status] || status;
   }
 
   logout(): void {
