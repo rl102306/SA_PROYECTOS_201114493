@@ -12,4 +12,8 @@ export class FxService {
   getRate(from: string, to: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/rate?from=${from}&to=${to}`);
   }
+
+  getCurrencies(base: string = 'GTQ'): Observable<any> {
+    return this.http.get(`${this.apiUrl}/currencies?base=${base}`);
+  }
 }

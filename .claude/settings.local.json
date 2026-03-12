@@ -3,7 +3,8 @@
     "allow": [
       "Bash(docker compose:*)",
       "Bash(curl:*)",
-      "Bash(docker exec:*)"
+      "Bash(docker exec:*)",
+      "Bash(find D:/USAC/1S2026/SA/SA_PROYECTOS_201114493/api-gateway/src/grpc -name \"*.ts\" | xargs ls 2>/dev/null && ls D:/USAC/1S2026/SA/SA_PROYECTOS_201114493/api-gateway/src/grpc/)"
     ]
   }
 }

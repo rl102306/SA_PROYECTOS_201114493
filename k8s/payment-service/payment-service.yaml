@@ -1,3 +1,7 @@
+# =============================================================
+# SECRET — payment-db-secret
+# =============================================================
+
 apiVersion: v1
 kind: Secret
 metadata:
@@ -7,7 +11,16 @@ type: Opaque
 stringData:
   username: payment_user
   password: payment_password
+
 ---
+# =============================================================
+# STATEFULSET — payment-db (PostgreSQL)
+# =============================================================
+# Base de datos exclusiva del payment-service.
+# Almacena: pagos, estados de pago (PENDING, COMPLETED, REFUNDED),
+# historial de transacciones y moneda de pago.
+# =============================================================
+
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -58,20 +71,37 @@ spec:
         resources:
           requests:
             storage: 5Gi
+
 ---
+# =============================================================
+# SERVICE — payment-db (ClusterIP)
+# =============================================================
+# DNS interno: payment-db.delivereats.svc.cluster.local
+# =============================================================
+
 apiVersion: v1
 kind: Service
 metadata:
   name: payment-db
   namespace: delivereats
 spec:
+  type: ClusterIP
   selector:
     app: payment-db
   ports:
     - port: 5432
       targetPort: 5432
-  clusterIP: None
+
 ---
+# =============================================================
+# CONFIGMAP — payment-service-config
+# =============================================================
+# Variables de entorno no sensibles para payment-service.
+# Las URLs de los otros servicios permiten que payment-service
+# llame a fx-service (conversión de moneda), order-service
+# (actualizar estado del pedido) y notification-service (emails).
+# =============================================================
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -80,13 +110,31 @@ metadata:
 data:
   GRPC_PORT: "50057"
   NODE_ENV: production
-  DB_HOST: payment-db
+  DB_HOST: payment-db          # Service de la BD de pagos
   DB_PORT: "5432"
   DB_NAME: payment_db
-  FX_SERVICE_URL: fx-service:50056
-  ORDER_SERVICE_URL: order-service:50053
-  NOTIFICATION_SERVICE_URL: notification-service:50055
+  FX_SERVICE_URL: fx-service:50056                   # Para conversión de moneda
+  ORDER_SERVICE_URL: order-service:50053             # Para actualizar estado del pedido
+  NOTIFICATION_SERVICE_URL: notification-service:50055  # Para enviar emails de confirmación
+
 ---
+# =============================================================
+# DEPLOYMENT — payment-service
+# =============================================================
+# Gestiona los pagos de los pedidos.
+# Funciones:
+#   - ProcessPayment: registra el pago en BD
+#   - RefundPayment: marca el pago como REFUNDED (usado por admin)
+#   - Convierte el monto usando fx-service si la moneda no es GTQ
+#   - Notifica al usuario cuando el pago se procesa o reembolsa
+#
+# Flujo de pago:
+#   order DELIVERED → api-gateway → payment-service
+#   payment-service → fx-service (conversión)
+#   payment-service → notification-service (email)
+#   payment-service → order-service (actualizar estado)
+# =============================================================
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -105,11 +153,14 @@ spec:
       containers:
         - name: payment-service
           image: delivereats/payment-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 50057
+          # envFrom carga el ConfigMap completo como variables de entorno
           envFrom:
             - configMapRef:
                 name: payment-service-config
+          # Las credenciales de BD se cargan del Secret (datos sensibles)
           env:
             - name: DB_USER
               valueFrom:
@@ -123,18 +174,26 @@ spec:
                   key: password
           resources:
             requests:
-              memory: "128Mi"
-              cpu: "100m"
+              memory: "64Mi"
+              cpu: "50m"
             limits:
               memory: "256Mi"
-              cpu: "200m"
+              cpu: "300m"
+
 ---
+# =============================================================
+# SERVICE — payment-service (ClusterIP)
+# =============================================================
+# Usado por: api-gateway (PAYMENT_SERVICE_URL=payment-service:50057)
+# =============================================================
+
 apiVersion: v1
 kind: Service
 metadata:
   name: payment-service
   namespace: delivereats
 spec:
+  type: ClusterIP
   selector:
     app: payment-service
   ports:

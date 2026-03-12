@@ -1,7 +1,11 @@
 import { GetExchangeRateUseCase } from '../../../application/usecases/GetExchangeRateUseCase';
+import { IExchangeRateApiClient } from '../../../domain/interfaces/IExchangeRateApiClient';
 
 export class FxServiceHandler {
-  constructor(private readonly getExchangeRateUseCase: GetExchangeRateUseCase) {}
+  constructor(
+    private readonly getExchangeRateUseCase: GetExchangeRateUseCase,
+    private readonly apiClient: IExchangeRateApiClient
+  ) {}
 
   async GetExchangeRate(call: any, callback: any): Promise<void> {
     try {
@@ -24,6 +28,17 @@ export class FxServiceHandler {
         timestamp: new Date().toISOString(),
         message: error.message || 'Error al obtener tipo de cambio'
       });
+    }
+  }
+
+  async GetAvailableCurrencies(call: any, callback: any): Promise<void> {
+    try {
+      const base = call.request.base || 'GTQ';
+      const currencies = await this.apiClient.fetchCurrencies(base);
+      callback(null, { success: true, currencies, message: `${currencies.length} divisas disponibles` });
+    } catch (error: any) {
+      console.error('❌ Error en GetAvailableCurrencies:', error);
+      callback(null, { success: false, currencies: [], message: error.message || 'Error al obtener divisas' });
     }
   }
 }

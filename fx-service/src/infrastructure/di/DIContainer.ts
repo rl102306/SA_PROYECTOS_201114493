@@ -15,7 +15,7 @@ export class DIContainer {
     this.cache = new RedisExchangeRateCache(redisHost, redisPort);
     const apiClient = new ExchangeRateApiClient();
     const useCase = new GetExchangeRateUseCase(this.cache, apiClient);
-    this.handler = new FxServiceHandler(useCase);
+    this.handler = new FxServiceHandler(useCase, apiClient);
   }
 
   static getInstance(): DIContainer {

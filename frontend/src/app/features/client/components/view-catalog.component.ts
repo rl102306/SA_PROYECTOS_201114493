@@ -4,8 +4,9 @@ import { CatalogService } from '../services/catalog.service';
 import { OrderService } from '../services/order.service';
 import { PaymentService } from '../services/payment.service';
 import { FxService } from '../services/fx.service';
+import { RatingService } from '../services/rating.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { Restaurant, Product } from '../../../shared/models/restaurant.model';
+import { Restaurant, Product, Promotion } from '../../../shared/models/restaurant.model';
 
 interface CartItem {
   productId: string;
@@ -56,9 +57,41 @@ export class ViewCatalogComponent implements OnInit {
   fxRate: number | null = null;
   fxLoading = false;
 
+  // ── Selector de divisa en el carrito ─────────────
+  selectedCurrency = 'GTQ';
+  availableCurrencies: string[] = ['GTQ'];
+  cartFxRate: number | null = null;
+  cartFxLoading = false;
+
   isPaymentProcessing = false;
   paymentSuccess = false;
   paymentError = '';
+
+  // ── Filtros de restaurantes ─────────────────────
+  filterSortBy = '';
+  filterTags: string[] = [];
+  filterTagInput = '';
+  filterHasPromotion = false;
+
+  // ── Promociones del restaurante seleccionado ────
+  restaurantPromotions: Promotion[] = [];
+
+  // ── Cupón en checkout ────────────────────────────
+  couponCode = '';
+  couponValidating = false;
+  couponResult: { valid: boolean; discountAmount: number; message: string } | null = null;
+
+  // ── Modal de calificación ────────────────────────
+  showRatingModal = false;
+  ratingOrderId = '';
+  ratingRestaurantId = '';
+  ratingDeliveryPersonId = '';
+  ratingRestaurantStars = 0;
+  ratingRestaurantComment = '';
+  ratingDeliveryStars = 0;
+  ratingDeliveryComment = '';
+  ratingSubmitting = false;
+  ratingSuccess = false;
   // ────────────────────────────────────────────────
 
   private placeholderColors = ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140'];
@@ -68,18 +101,38 @@ export class ViewCatalogComponent implements OnInit {
     private orderService: OrderService,
     private paymentService: PaymentService,
     private fxService: FxService,
+    private ratingService: RatingService,
     private authService: AuthService,
     private router: Router
   ) {}
 
   ngOnInit(): void {
     this.loadRestaurants();
+    this.loadAvailableCurrencies();
+  }
+
+  loadAvailableCurrencies(): void {
+    this.fxService.getCurrencies('GTQ').subscribe({
+      next: (res) => {
+        if (res.success && res.currencies?.length > 0) {
+          // GTQ primero, luego el resto ordenado
+          const others = res.currencies.filter((c: string) => c !== 'GTQ');
+          this.availableCurrencies = ['GTQ', ...others];
+        }
+      },
+      error: () => {} // si falla, queda ['GTQ'] y el selector sigue funcionando
+    });
   }
 
   loadRestaurants(): void {
     this.isLoadingRestaurants = true;
     this.errorMessage = '';
-    this.catalogService.getRestaurants().subscribe({
+    const filters = {
+      sortBy: this.filterSortBy || undefined,
+      tags: this.filterTags.length > 0 ? this.filterTags : undefined,
+      hasPromotion: this.filterHasPromotion || undefined
+    };
+    this.catalogService.getRestaurants(filters).subscribe({
       next: (restaurants) => {
         this.restaurants = restaurants;
         this.isLoadingRestaurants = false;
@@ -91,6 +144,42 @@ export class ViewCatalogComponent implements OnInit {
     });
   }
 
+  applyFilters(): void {
+    this.loadRestaurants();
+  }
+
+  get suggestedTags(): string[] {
+    const all = this.restaurants.flatMap(r => r.tags || []);
+    return [...new Set(all)].sort();
+  }
+
+  toggleSuggestedTag(tag: string): void {
+    if (this.filterTags.includes(tag)) {
+      this.filterTags = this.filterTags.filter(t => t !== tag);
+    } else {
+      this.filterTags.push(tag);
+    }
+    this.loadRestaurants();
+  }
+
+  addFilterTag(): void {
+    const tag = this.filterTagInput.trim();
+    if (tag && !this.filterTags.includes(tag)) {
+      this.filterTags.push(tag);
+      this.filterTagInput = '';
+      this.loadRestaurants();
+    }
+  }
+
+  removeFilterTag(tag: string): void {
+    this.filterTags = this.filterTags.filter(t => t !== tag);
+    this.loadRestaurants();
+  }
+
+  getStarsArray(avg: number): string[] {
+    return [1,2,3,4,5].map(i => i <= Math.round(avg) ? 'full' : 'empty');
+  }
+
   selectRestaurant(restaurant: Restaurant): void {
     if (this.cart.length > 0 && this.selectedRestaurant?.id !== restaurant.id) {
       this.cart = [];
@@ -98,6 +187,12 @@ export class ViewCatalogComponent implements OnInit {
     this.selectedRestaurant = restaurant;
     this.step = 'products';
     this.isLoadingProducts = true;
+    this.restaurantPromotions = [];
+    // Load promotions for this restaurant
+    this.catalogService.getRestaurantPromotions(restaurant.id).subscribe({
+      next: (promotions) => { this.restaurantPromotions = promotions; },
+      error: () => {}
+    });
     this.errorMessage = '';
     this.catalogService.getProductsByRestaurant(restaurant.id).subscribe({
       next: (products) => {
@@ -152,6 +247,29 @@ export class ViewCatalogComponent implements OnInit {
 
   get cartTotal(): number {
     return this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  }
+
+  onCurrencyChange(): void {
+    if (this.selectedCurrency === 'GTQ') {
+      this.cartFxRate = null;
+      return;
+    }
+    this.cartFxLoading = true;
+    this.cartFxRate = null;
+    this.fxService.getRate('GTQ', this.selectedCurrency).subscribe({
+      next: (res) => { this.cartFxRate = res.rate || null; this.cartFxLoading = false; },
+      error: () => { this.cartFxRate = null; this.cartFxLoading = false; }
+    });
+  }
+
+  get cartTotalConverted(): string {
+    if (!this.cartFxRate) return '';
+    return (this.cartTotalAfterCoupon * this.cartFxRate).toFixed(2);
+  }
+
+  get cartTotalAfterCoupon(): number {
+    const discount = this.couponResult?.valid ? this.couponResult.discountAmount : 0;
+    return Math.max(0, this.cartTotal - discount);
   }
 
   get cartItemCount(): number {
@@ -237,6 +355,90 @@ export class ViewCatalogComponent implements OnInit {
     return map[status] || '';
   }
 
+  // ── Cupón ────────────────────────────────────────
+  validateCoupon(): void {
+    if (!this.couponCode.trim()) return;
+    this.couponValidating = true;
+    this.couponResult = null;
+    this.catalogService.validateCoupon(this.couponCode.trim(), this.cartTotal).subscribe({
+      next: (res) => {
+        this.couponResult = { valid: res.valid, discountAmount: res.discountAmount || 0, message: res.message };
+        this.couponValidating = false;
+      },
+      error: () => {
+        this.couponResult = { valid: false, discountAmount: 0, message: 'Error al validar el cupón' };
+        this.couponValidating = false;
+      }
+    });
+  }
+
+  clearCoupon(): void {
+    this.couponCode = '';
+    this.couponResult = null;
+  }
+
+  // ── Calificación ──────────────────────────────────
+  openRatingModal(orderId: string, restaurantId: string, deliveryPersonId = ''): void {
+    this.ratingOrderId = orderId;
+    this.ratingRestaurantId = restaurantId;
+    this.ratingDeliveryPersonId = deliveryPersonId;
+    this.ratingRestaurantStars = 0;
+    this.ratingRestaurantComment = '';
+    this.ratingDeliveryStars = 0;
+    this.ratingDeliveryComment = '';
+    this.ratingSuccess = false;
+    this.showRatingModal = true;
+  }
+
+  closeRatingModal(): void {
+    this.showRatingModal = false;
+  }
+
+  setRestaurantStar(n: number): void { this.ratingRestaurantStars = n; }
+  setDeliveryStar(n: number): void { this.ratingDeliveryStars = n; }
+
+  submitRating(): void {
+    if (this.ratingRestaurantStars === 0) return;
+    this.ratingSubmitting = true;
+    const reqs = [
+      this.ratingService.createRating({
+        orderId: this.ratingOrderId,
+        restaurantId: this.ratingRestaurantId,
+        type: 'RESTAURANT',
+        stars: this.ratingRestaurantStars,
+        comment: this.ratingRestaurantComment
+      })
+    ];
+    if (this.ratingDeliveryPersonId && this.ratingDeliveryStars > 0) {
+      reqs.push(this.ratingService.createRating({
+        orderId: this.ratingOrderId,
+        deliveryPersonId: this.ratingDeliveryPersonId,
+        type: 'DELIVERY',
+        stars: this.ratingDeliveryStars,
+        comment: this.ratingDeliveryComment
+      }));
+    }
+    let completed = 0;
+    reqs.forEach(req => req.subscribe({
+      next: () => {
+        completed++;
+        if (completed === reqs.length) {
+          this.ratingSubmitting = false;
+          this.ratingSuccess = true;
+          setTimeout(() => this.closeRatingModal(), 1500);
+        }
+      },
+      error: () => {
+        completed++;
+        if (completed === reqs.length) { this.ratingSubmitting = false; }
+      }
+    }));
+  }
+
+  canRate(order: any): boolean {
+    return order.status === 'DELIVERED';
+  }
+
   // ── Crear pedido ────────────────────────────────
 
   submitOrder(): void {
@@ -248,7 +450,7 @@ export class ViewCatalogComponent implements OnInit {
     this.successMessage = '';
 
     const itemsSnapshot = [...this.cart];
-    const totalSnapshot = this.cartTotal;
+    const totalSnapshot = this.cartTotalAfterCoupon;
 
     this.orderService.createOrder({
       userId: user?.id,

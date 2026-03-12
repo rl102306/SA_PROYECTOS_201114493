@@ -1,3 +1,15 @@
+# =============================================================
+# SECRET — smtp-secret
+# =============================================================
+# Credenciales SMTP para enviar emails desde notification-service.
+# Se usa Gmail con una "App Password" (contraseña de aplicación)
+# que Google genera específicamente para apps de terceros,
+# sin exponer la contraseña real de la cuenta.
+#
+# IMPORTANTE: Cambiar estas credenciales si se despliega en producción.
+# Usar un gestor de secretos externo (Vault, AWS Secrets Manager, etc.)
+# =============================================================
+
 apiVersion: v1
 kind: Secret
 metadata:
@@ -5,20 +17,44 @@ metadata:
   namespace: delivereats
 type: Opaque
 stringData:
-  smtp-user: "tu-email@gmail.com"      # Cambiar por email real
-  smtp-password: "tu-app-password"      # Cambiar por contraseña de aplicación
+  smtp-user: "ronaldolara58@gmail.com"   # Email remitente de las notificaciones
+  smtp-password: "whrfamjormdimsbw"      # App Password de Gmail (no la contraseña real)
+
 ---
+# =============================================================
+# CONFIGMAP — notification-config
+# =============================================================
+# Configuración SMTP no sensible.
+# Gmail SMTP: servidor smtp.gmail.com, puerto 587 (STARTTLS)
+# =============================================================
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: notification-config
   namespace: delivereats
 data:
-  SMTP_HOST: smtp.gmail.com
-  SMTP_PORT: "587"
-  GRPC_PORT: "50055"
+  SMTP_HOST: smtp.gmail.com   # Servidor SMTP de Gmail
+  SMTP_PORT: "587"            # Puerto STARTTLS (más seguro que 465/SSL)
+  GRPC_PORT: "50055"          # Puerto gRPC de este microservicio
   NODE_ENV: production
+
 ---
+# =============================================================
+# DEPLOYMENT — notification-service
+# =============================================================
+# Microservicio de notificaciones por email (Nodemailer).
+# Se activa cuando otros servicios le llaman por gRPC para:
+#   - ORDER_CREATED: email al cliente confirmando su pedido
+#   - CONFIRMED: email al cliente indicando que el restaurante aceptó
+#   - IN_TRANSIT: email cuando el repartidor recoge el pedido
+#   - DELIVERED: email de entrega exitosa al cliente
+#   - CANCELLED: email de cancelación con motivo
+#   - REFUNDED: email de reembolso procesado
+#
+# Llamadores: api-gateway, payment-service, delivery-service
+# =============================================================
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -37,11 +73,14 @@ spec:
       containers:
         - name: notification-service
           image: delivereats/notification-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 50055
+          # Carga el ConfigMap completo (SMTP_HOST, SMTP_PORT, GRPC_PORT, NODE_ENV)
           envFrom:
             - configMapRef:
                 name: notification-config
+          # Las credenciales SMTP se cargan del Secret
           env:
             - name: SMTP_USER
               valueFrom:
@@ -60,13 +99,24 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "100m"
+
 ---
+# =============================================================
+# SERVICE — notification-service (ClusterIP)
+# =============================================================
+# Usado por:
+#   - api-gateway (NOTIFICATION_SERVICE_URL=notification-service:50055)
+#   - payment-service (NOTIFICATION_SERVICE_URL=notification-service:50055)
+#   - delivery-service (via api-gateway)
+# =============================================================
+
 apiVersion: v1
 kind: Service
 metadata:
   name: notification-service
   namespace: delivereats
 spec:
+  type: ClusterIP
   selector:
     app: notification-service
   ports:

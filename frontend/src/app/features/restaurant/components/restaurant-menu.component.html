@@ -21,6 +21,16 @@
       📦 Pedidos Activos
       <span class="tab-badge" [class.badge-alert]="orders.length > 0">{{ orders.length }}</span>
     </button>
+    <button class="tab-btn" [class.active]="activeTab === 'notifications'" (click)="setTab('notifications')">
+      🔔 Inbox
+      <span class="tab-badge" [class.badge-alert]="unreadCount > 0">{{ unreadCount }}</span>
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'promotions'" (click)="setTab('promotions')">
+      🎁 Promociones
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'coupons'" (click)="setTab('coupons')">
+      🏷️ Cupones
+    </button>
   </div>
 
   <!-- ALERTAS -->
@@ -202,6 +212,202 @@
       <div class="modal-actions">
         <button class="btn btn-secondary" (click)="closeRejectModal()">Cancelar</button>
         <button class="btn btn-reject" (click)="confirmReject()">Confirmar Rechazo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB NOTIFICACIONES (Inbox RabbitMQ) ===== -->
+  <div *ngIf="activeTab === 'notifications'">
+    <div class="toolbar">
+      <h2>Bandeja de Entrada</h2>
+      <button class="btn btn-secondary" *ngIf="unreadCount > 0" (click)="markAllRead()">Marcar todas como leídas</button>
+    </div>
+    <div *ngIf="isLoadingNotifications" class="loading-state"><p>Cargando notificaciones...</p></div>
+    <div *ngIf="!isLoadingNotifications && notifications.length === 0" class="empty-state">
+      <p>No hay notificaciones de nuevos pedidos.</p>
+    </div>
+    <div class="notifications-list" *ngIf="!isLoadingNotifications && notifications.length > 0">
+      <div *ngFor="let n of notifications" class="notification-card" [class.unread]="!n.isRead">
+        <div class="notif-header">
+          <span class="notif-order">📦 Pedido #{{ n.orderId?.substring(0,8) }}...</span>
+          <span class="notif-date">{{ n.createdAt | date:'dd/MM HH:mm' }}</span>
+          <span class="badge-new" *ngIf="!n.isRead">NUEVO</span>
+        </div>
+        <div class="notif-body">
+          <span>Total: <strong>Q{{ n.totalAmount?.toFixed(2) }}</strong></span>
+          <span *ngIf="n.deliveryAddress"> — {{ n.deliveryAddress }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB PROMOCIONES ===== -->
+  <div *ngIf="activeTab === 'promotions'">
+    <div class="toolbar">
+      <h2>Promociones</h2>
+      <button class="btn btn-primary" (click)="openPromoModal()">+ Nueva Promoción</button>
+    </div>
+    <div *ngIf="isLoadingPromotions" class="loading-state"><p>Cargando...</p></div>
+    <div *ngIf="!isLoadingPromotions && promotions.length === 0" class="empty-state">
+      <p>No tienes promociones. ¡Crea la primera para atraer clientes!</p>
+    </div>
+    <div class="table-container" *ngIf="!isLoadingPromotions && promotions.length > 0">
+      <table class="products-table">
+        <thead><tr>
+          <th>Título</th><th>Tipo</th><th>Descuento</th><th>Vigencia</th><th>Estado</th><th>Acciones</th>
+        </tr></thead>
+        <tbody>
+          <tr *ngFor="let p of promotions">
+            <td>{{ p.title }}</td>
+            <td>{{ p.type }}</td>
+            <td>{{ p.discount_value }}{{ p.type === 'PERCENTAGE' ? '%' : ' Q' }}</td>
+            <td>{{ p.starts_at | date:'dd/MM' }} - {{ p.ends_at | date:'dd/MM/yy' }}</td>
+            <td><span [class]="p.is_active ? 'badge-active' : 'badge-inactive'">{{ p.is_active ? 'Activa' : 'Inactiva' }}</span></td>
+            <td>
+              <button class="btn btn-danger btn-sm" (click)="deletePromotion(p.id)">Eliminar</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== TAB CUPONES ===== -->
+  <div *ngIf="activeTab === 'coupons'">
+    <div class="toolbar">
+      <h2>Cupones</h2>
+      <button class="btn btn-primary" (click)="openCouponModal()">+ Nuevo Cupón</button>
+    </div>
+    <p class="info-note">Los cupones deben ser aprobados por un administrador antes de que los clientes puedan usarlos.</p>
+    <div *ngIf="isLoadingCoupons" class="loading-state"><p>Cargando...</p></div>
+    <div *ngIf="!isLoadingCoupons && coupons.length === 0" class="empty-state">
+      <p>No tienes cupones creados.</p>
+    </div>
+    <div class="table-container" *ngIf="!isLoadingCoupons && coupons.length > 0">
+      <table class="products-table">
+        <thead><tr>
+          <th>Código</th><th>Tipo</th><th>Descuento</th><th>Min. Pedido</th><th>Usos</th><th>Aprobado</th><th>Vence</th>
+        </tr></thead>
+        <tbody>
+          <tr *ngFor="let c of coupons">
+            <td><strong>{{ c.code }}</strong></td>
+            <td>{{ c.type }}</td>
+            <td>{{ c.discount_value }}{{ c.type === 'PERCENTAGE' ? '%' : ' Q' }}</td>
+            <td>Q{{ c.min_order_amount || 0 }}</td>
+            <td>{{ c.uses_count || 0 }}/{{ c.max_uses || '∞' }}</td>
+            <td>
+              <span [class]="c.is_approved ? 'badge-active' : 'badge-pending'">
+                {{ c.is_approved ? 'Aprobado' : 'Pendiente' }}
+              </span>
+            </td>
+            <td>{{ c.expires_at | date:'dd/MM/yy' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MODAL NUEVA PROMOCIÓN -->
+  <div class="modal-overlay" *ngIf="showPromoModal" (click)="closePromoModal()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Nueva Promoción</h3>
+        <button class="modal-close" (click)="closePromoModal()">✕</button>
+      </div>
+      <form [formGroup]="promoForm" class="modal-form">
+        <div class="form-group">
+          <label>Título *</label>
+          <input type="text" formControlName="title" class="form-control" placeholder="20% en todo el menú" />
+        </div>
+        <div class="form-group">
+          <label>Descripción</label>
+          <input type="text" formControlName="description" class="form-control" placeholder="Solo hoy" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tipo *</label>
+            <select formControlName="type" class="form-control">
+              <option value="PERCENTAGE">Porcentaje (%)</option>
+              <option value="FIXED">Monto fijo (Q)</option>
+              <option value="FREE_DELIVERY">Envío gratis</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Valor *</label>
+            <input type="number" formControlName="discountValue" class="form-control" min="0.01" step="0.01" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Inicia *</label>
+            <input type="datetime-local" formControlName="startsAt" class="form-control" />
+          </div>
+          <div class="form-group">
+            <label>Termina *</label>
+            <input type="datetime-local" formControlName="endsAt" class="form-control" />
+          </div>
+        </div>
+      </form>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" (click)="closePromoModal()">Cancelar</button>
+        <button class="btn btn-primary" (click)="savePromotion()" [disabled]="promoForm.invalid || isSavingPromo">
+          {{ isSavingPromo ? 'Guardando...' : 'Crear Promoción' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL NUEVO CUPÓN -->
+  <div class="modal-overlay" *ngIf="showCouponModal" (click)="closeCouponModal()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Nuevo Cupón</h3>
+        <button class="modal-close" (click)="closeCouponModal()">✕</button>
+      </div>
+      <form [formGroup]="couponForm" class="modal-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Código *</label>
+            <input type="text" formControlName="code" class="form-control" placeholder="DESC20" style="text-transform:uppercase" />
+          </div>
+          <div class="form-group">
+            <label>Tipo *</label>
+            <select formControlName="type" class="form-control">
+              <option value="PERCENTAGE">Porcentaje (%)</option>
+              <option value="FIXED">Monto fijo (Q)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Valor descuento *</label>
+            <input type="number" formControlName="discountValue" class="form-control" min="0.01" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label>Mínimo de pedido (Q)</label>
+            <input type="number" formControlName="minOrderAmount" class="form-control" min="0" step="0.01" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Máx. usos (0 = ilimitado)</label>
+            <input type="number" formControlName="maxUses" class="form-control" min="0" />
+          </div>
+          <div class="form-group">
+            <label>Expira *</label>
+            <input type="datetime-local" formControlName="expiresAt" class="form-control" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Descripción</label>
+          <input type="text" formControlName="description" class="form-control" placeholder="Cupón de descuento especial" />
+        </div>
+      </form>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" (click)="closeCouponModal()">Cancelar</button>
+        <button class="btn btn-primary" (click)="saveCoupon()" [disabled]="couponForm.invalid || isSavingCoupon">
+          {{ isSavingCoupon ? 'Guardando...' : 'Crear Cupón' }}
+        </button>
       </div>
     </div>
   </div>

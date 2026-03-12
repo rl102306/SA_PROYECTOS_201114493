@@ -1,3 +1,7 @@
+# =============================================================
+# SECRET — delivery-db-secret
+# =============================================================
+
 apiVersion: v1
 kind: Secret
 metadata:
@@ -7,7 +11,18 @@ type: Opaque
 stringData:
   username: delivery_user
   password: delivery_password
+
 ---
+# =============================================================
+# STATEFULSET — delivery-db (PostgreSQL)
+# =============================================================
+# Base de datos exclusiva del delivery-service.
+# Almacena: repartidores, asignaciones de entrega, fotos en base64.
+#
+# 10Gi de almacenamiento porque las fotos de entrega se guardan
+# como strings base64 directamente en la BD (pueden ser grandes).
+# =============================================================
+
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -57,21 +72,42 @@ spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: 10Gi  # Mayor capacidad por las fotos base64
+            storage: 10Gi   # Mayor capacidad por las fotos base64 de entregas
+
 ---
+# =============================================================
+# SERVICE — delivery-db (ClusterIP)
+# =============================================================
+# DNS interno: delivery-db.delivereats.svc.cluster.local
+# =============================================================
+
 apiVersion: v1
 kind: Service
 metadata:
   name: delivery-db
   namespace: delivereats
 spec:
+  type: ClusterIP
   selector:
     app: delivery-db
   ports:
     - port: 5432
       targetPort: 5432
-  clusterIP: None
+
 ---
+# =============================================================
+# DEPLOYMENT — delivery-service
+# =============================================================
+# Gestiona el módulo de repartidores (Delivery Persons).
+# Funciones:
+#   - Asignar pedidos a repartidores disponibles
+#   - Actualizar estado de entrega (ASSIGNED → PICKED_UP → IN_TRANSIT → DELIVERED)
+#   - Almacenar foto de entrega (base64) como evidencia
+#   - Cancelar entregas con motivo
+#
+# Expone RPC: AssignDelivery, UpdateStatus, GetDeliveryByOrder
+# =============================================================
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -90,6 +126,7 @@ spec:
       containers:
         - name: delivery-service
           image: delivereats/delivery-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 50054
           env:
@@ -113,20 +150,29 @@ spec:
                 secretKeyRef:
                   name: delivery-db-secret
                   key: password
+          # Mayor límite de memoria porque maneja imágenes base64
           resources:
             requests:
-              memory: "128Mi"
-              cpu: "100m"
+              memory: "64Mi"
+              cpu: "50m"
             limits:
               memory: "512Mi"
               cpu: "300m"
+
 ---
+# =============================================================
+# SERVICE — delivery-service (ClusterIP)
+# =============================================================
+# Usado por: api-gateway (DELIVERY_SERVICE_URL=delivery-service:50054)
+# =============================================================
+
 apiVersion: v1
 kind: Service
 metadata:
   name: delivery-service
   namespace: delivereats
 spec:
+  type: ClusterIP
   selector:
     app: delivery-service
   ports:

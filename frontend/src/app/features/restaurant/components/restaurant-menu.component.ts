@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MenuService } from '../services/menu.service';
+import { PromotionService } from '../services/promotion.service';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
@@ -15,7 +16,7 @@ export class RestaurantMenuComponent implements OnInit, OnDestroy {
   restaurantName = '';
 
   // ── Pestañas ─────────────────────────────────────
-  activeTab: 'menu' | 'orders' = 'menu';
+  activeTab: 'menu' | 'orders' | 'promotions' | 'coupons' | 'notifications' = 'menu';
 
   // ── Menú ─────────────────────────────────────────
   products: any[] = [];
@@ -36,12 +37,32 @@ export class RestaurantMenuComponent implements OnInit, OnDestroy {
   rejectingOrder: any = null;
   rejectReason = '';
 
+  // ── Promociones ───────────────────────────────────
+  promotions: any[] = [];
+  isLoadingPromotions = false;
+  showPromoModal = false;
+  promoForm: FormGroup;
+  isSavingPromo = false;
+
+  // ── Cupones ───────────────────────────────────────
+  coupons: any[] = [];
+  isLoadingCoupons = false;
+  showCouponModal = false;
+  couponForm: FormGroup;
+  isSavingCoupon = false;
+
+  // ── Notificaciones (inbox RabbitMQ) ──────────────
+  notifications: any[] = [];
+  unreadCount = 0;
+  isLoadingNotifications = false;
+
   // ── Mensajes ─────────────────────────────────────
   errorMessage = '';
   successMessage = '';
 
   constructor(
     private menuService: MenuService,
+    private promotionService: PromotionService,
     private authService: AuthService,
     private fb: FormBuilder,
     private router: Router
@@ -53,6 +74,27 @@ export class RestaurantMenuComponent implements OnInit, OnDestroy {
       category:    [''],
       isAvailable: [true]
     });
+
+    const now = new Date();
+    const nextMonth = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    this.promoForm = this.fb.group({
+      title:         ['', Validators.required],
+      description:   [''],
+      type:          ['PERCENTAGE', Validators.required],
+      discountValue: [10, [Validators.required, Validators.min(0.01)]],
+      startsAt:      [now.toISOString().slice(0,16), Validators.required],
+      endsAt:        [nextMonth.toISOString().slice(0,16), Validators.required]
+    });
+
+    this.couponForm = this.fb.group({
+      code:           ['', [Validators.required, Validators.minLength(3)]],
+      description:    [''],
+      type:           ['PERCENTAGE', Validators.required],
+      discountValue:  [10, [Validators.required, Validators.min(0.01)]],
+      minOrderAmount: [0, Validators.min(0)],
+      maxUses:        [0, Validators.min(0)],
+      expiresAt:      [nextMonth.toISOString().slice(0,16), Validators.required]
+    });
   }
 
   ngOnInit(): void {
@@ -62,8 +104,12 @@ export class RestaurantMenuComponent implements OnInit, OnDestroy {
     this.restaurantName = user.email || 'Mi Restaurante';
     this.loadProducts();
     this.loadOrders();
-    // Refrescar pedidos cada 30 s
-    this.ordersRefreshInterval = setInterval(() => this.loadOrders(), 30000);
+    this.loadNotifications();
+    // Refrescar pedidos y notificaciones cada 30 s
+    this.ordersRefreshInterval = setInterval(() => {
+      this.loadOrders();
+      this.loadNotifications();
+    }, 30000);
   }
 
   ngOnDestroy(): void {
@@ -71,11 +117,156 @@ export class RestaurantMenuComponent implements OnInit, OnDestroy {
   }
 
   // ── Tab helpers ──────────────────────────────────
-  setTab(tab: 'menu' | 'orders'): void {
+  setTab(tab: 'menu' | 'orders' | 'promotions' | 'coupons' | 'notifications'): void {
     this.activeTab = tab;
     this.errorMessage = '';
     this.successMessage = '';
     if (tab === 'orders') this.loadOrders();
+    if (tab === 'promotions') this.loadPromotions();
+    if (tab === 'coupons') this.loadCoupons();
+    if (tab === 'notifications') this.loadNotifications();
+  }
+
+  // ── Notificaciones ───────────────────────────────
+  loadNotifications(): void {
+    if (!this.restaurantId) return;
+    this.isLoadingNotifications = true;
+    this.promotionService.getNotifications(this.restaurantId).subscribe({
+      next: (res) => {
+        this.notifications = res.notifications || [];
+        this.unreadCount = res.unreadCount || 0;
+        this.isLoadingNotifications = false;
+      },
+      error: () => { this.isLoadingNotifications = false; }
+    });
+  }
+
+  markAllRead(): void {
+    this.promotionService.markNotificationsRead(this.restaurantId).subscribe({
+      next: () => {
+        this.notifications.forEach(n => n.isRead = true);
+        this.unreadCount = 0;
+      },
+      error: () => {}
+    });
+  }
+
+  // ── Promociones ───────────────────────────────────
+  loadPromotions(): void {
+    this.isLoadingPromotions = true;
+    this.promotionService.getPromotions(this.restaurantId).subscribe({
+      next: (res) => {
+        this.promotions = res.promotions || [];
+        this.isLoadingPromotions = false;
+      },
+      error: () => { this.isLoadingPromotions = false; }
+    });
+  }
+
+  openPromoModal(): void {
+    this.showPromoModal = true;
+    this.promoForm.reset({
+      title: '', description: '', type: 'PERCENTAGE', discountValue: 10,
+      startsAt: new Date().toISOString().slice(0,16),
+      endsAt: new Date(Date.now() + 30*24*60*60*1000).toISOString().slice(0,16)
+    });
+  }
+
+  closePromoModal(): void { this.showPromoModal = false; }
+
+  savePromotion(): void {
+    if (this.promoForm.invalid) return;
+    this.isSavingPromo = true;
+    const val = this.promoForm.value;
+    this.promotionService.createPromotion({
+      restaurantId: this.restaurantId,
+      title: val.title,
+      description: val.description,
+      type: val.type,
+      discountValue: parseFloat(val.discountValue),
+      startsAt: new Date(val.startsAt).toISOString(),
+      endsAt: new Date(val.endsAt).toISOString()
+    }).subscribe({
+      next: (res) => {
+        this.isSavingPromo = false;
+        if (res.success) {
+          this.showPromoModal = false;
+          this.successMessage = 'Promoción creada exitosamente';
+          this.loadPromotions();
+        } else {
+          this.errorMessage = res.message;
+        }
+      },
+      error: (err: any) => {
+        this.isSavingPromo = false;
+        this.errorMessage = err.error?.message || 'Error al guardar promoción';
+      }
+    });
+  }
+
+  deletePromotion(id: string): void {
+    if (!confirm('¿Eliminar esta promoción?')) return;
+    this.promotionService.deletePromotion(id, this.restaurantId).subscribe({
+      next: () => {
+        this.promotions = this.promotions.filter(p => p.id !== id);
+        this.successMessage = 'Promoción eliminada';
+      },
+      error: () => {}
+    });
+  }
+
+  // ── Cupones ───────────────────────────────────────
+  loadCoupons(): void {
+    this.isLoadingCoupons = true;
+    this.promotionService.getCoupons(this.restaurantId).subscribe({
+      next: (res) => {
+        this.coupons = res.coupons || [];
+        this.isLoadingCoupons = false;
+      },
+      error: () => { this.isLoadingCoupons = false; }
+    });
+  }
+
+  openCouponModal(): void {
+    this.showCouponModal = true;
+    this.couponForm.reset({
+      code: '', description: '', type: 'PERCENTAGE', discountValue: 10,
+      minOrderAmount: 0, maxUses: 0,
+      expiresAt: new Date(Date.now() + 30*24*60*60*1000).toISOString().slice(0,16)
+    });
+  }
+
+  closeCouponModal(): void { this.showCouponModal = false; }
+
+  saveCoupon(): void {
+    if (this.couponForm.invalid) return;
+    this.isSavingCoupon = true;
+    const val = this.couponForm.value;
+    this.promotionService.createCoupon({
+      restaurantId: this.restaurantId,
+      code: val.code,
+      description: val.description,
+      type: val.type,
+      discountValue: parseFloat(val.discountValue),
+      minOrderAmount: parseFloat(val.minOrderAmount || 0),
+      maxUses: parseInt(val.maxUses || 0),
+      expiresAt: new Date(val.expiresAt).toISOString()
+    }).subscribe({
+      next: (res) => {
+        this.isSavingCoupon = false;
+        if (res.success) {
+          this.showCouponModal = false;
+          this.successMessage = res.message;
+          this.loadCoupons();
+        } else {
+          this.errorMessage = res.message;
+        }
+      },
+      error: (err: any) => {
+        this.isSavingCoupon = false;
+        this.errorMessage = err.error?.message || 'Error al guardar cupón';
+      }
+    });
   }
 
   // ── Menú ─────────────────────────────────────────

@@ -5,6 +5,8 @@ package fx;
 service FxService {
   // Obtener tipo de cambio del día (con caché Redis y fallback)
   rpc GetExchangeRate (ExchangeRateRequest) returns (ExchangeRateResponse);
+  // Obtener lista de divisas disponibles
+  rpc GetAvailableCurrencies (CurrenciesRequest) returns (CurrenciesResponse);
 }
 
 message ExchangeRateRequest {
@@ -18,4 +20,14 @@ message ExchangeRateResponse {
   string source = 3;     // "API" | "CACHE" | "CACHE_FALLBACK"
   string timestamp = 4;  // ISO 8601
   string message = 5;
+}
+
+message CurrenciesRequest {
+  string base = 1;  // ej: "GTQ"
+}
+
+message CurrenciesResponse {
+  bool success = 1;
+  repeated string currencies = 2;
+  string message = 3;
 }

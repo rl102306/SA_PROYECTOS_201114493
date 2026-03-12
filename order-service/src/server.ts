@@ -9,6 +9,7 @@ import { GetAllOrdersUseCase } from './application/usecases/GetAllOrdersUseCase'
 import { CatalogServiceClient } from './infrastructure/grpc/clients/CatalogServiceClient';
 import { Order, OrderStatus } from './domain/entities/Order';
 import { CreateOrderDTO } from './application/dtos/CreateOrderDTO';
+import { initRabbitMQPublisher, publishOrderCreated } from './infrastructure/messaging/RabbitMQPublisher';
 
 dotenv.config();
 
@@ -56,6 +57,9 @@ async function main() {
     const pool = createDatabasePool();
     await initializeDatabase(pool);
 
+    // Iniciar RabbitMQ publisher (no bloqueante)
+    initRabbitMQPublisher().catch(() => {});
+
     const orderRepository = new PostgresOrderRepository(pool);
     const catalogClient = new CatalogServiceClient();
     const createOrderUseCase = new CreateOrderUseCase(orderRepository, catalogClient);
@@ -89,6 +93,15 @@ async function main() {
 			});
 
 		const order = await createOrderUseCase.execute(dto);
+          // Publicar evento ORDER_CREATED a RabbitMQ
+          publishOrderCreated({
+            orderId: order.id,
+            restaurantId: order.restaurantId,
+            userId: order.userId,
+            totalAmount: order.totalAmount,
+            deliveryAddress: order.deliveryAddress || '',
+            items: order.items
+          });
           callback(null, {
             success: true,
             message: 'Orden creada exitosamente',

@@ -26,4 +26,20 @@ router.get('/rate', async (req: Request, res: Response) => {
   }
 });
 
+// GET /fx/currencies?base=GTQ
+router.get('/currencies', async (req: Request, res: Response) => {
+  try {
+    const base = (req.query.base as string) || 'GTQ';
+    const response = await fxServiceClient.getAvailableCurrencies(base);
+    res.json({
+      success: response.success,
+      currencies: response.currencies || [],
+      message: response.message
+    });
+  } catch (error: any) {
+    console.error('Error en GET /fx/currencies:', error);
+    res.status(500).json({ success: false, message: error.message || 'Error al obtener divisas' });
+  }
+});
+
 export default router;

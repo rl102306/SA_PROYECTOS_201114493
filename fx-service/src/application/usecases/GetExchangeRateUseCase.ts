@@ -24,7 +24,7 @@ export class GetExchangeRateUseCase {
     // 1. Buscar en caché (con TTL vigente)
     const cached = await this.cache.get(cacheKey);
     if (cached !== null) {
-      console.log(`✅ Tasa ${from}→${to} obtenida de caché: ${cached}`);
+      console.log(`Tasa ${from}→${to} obtenida de caché: ${cached}`);
       return { rate: cached, source: 'CACHE' };
     }
 
@@ -32,10 +32,10 @@ export class GetExchangeRateUseCase {
     try {
       const rate = await this.apiClient.fetchRate(from, to);
       await this.cache.set(cacheKey, rate, 86400); // TTL 24h
-      console.log(`🌐 Tasa ${from}→${to} obtenida de API: ${rate}`);
+      console.log(`Tasa ${from}→${to} obtenida de API: ${rate}`);
       return { rate, source: 'API' };
     } catch (apiError) {
-      console.error(`⚠️ API falló para ${from}→${to}:`, apiError);
+      console.error(`API falló para ${from}→${to}:`, apiError);
 
       // 3. Fallback: buscar en caché aunque haya expirado
       const stale = await this.cache.getStale(cacheKey);

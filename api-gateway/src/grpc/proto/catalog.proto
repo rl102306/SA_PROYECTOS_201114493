@@ -3,6 +3,7 @@ syntax = "proto3";
 package catalog;
 
 service CatalogService {
+  // Existing
   rpc ValidateOrder (ValidationRequest) returns (ValidationResponse);
   rpc GetProduct (GetProductRequest) returns (GetProductResponse);
   rpc GetRestaurantCatalog (GetRestaurantCatalogRequest) returns (GetRestaurantCatalogResponse);
@@ -11,8 +12,30 @@ service CatalogService {
   rpc UpdateProduct (UpdateProductRequest) returns (ProductResponse);
   rpc DeleteProduct (DeleteProductRequest) returns (DeleteProductResponse);
   rpc CreateRestaurant (CreateRestaurantRequest) returns (CreateRestaurantResponse);
+
+  // Promotions
+  rpc CreatePromotion (CreatePromotionRequest) returns (PromotionResponse);
+  rpc ListPromotions (ListPromotionsRequest) returns (ListPromotionsResponse);
+  rpc DeletePromotion (DeletePromotionRequest) returns (DeletePromotionResponse);
+
+  // Coupons
+  rpc CreateCoupon (CreateCouponRequest) returns (CouponResponse);
+  rpc ListCoupons (ListCouponsRequest) returns (ListCouponsResponse);
+  rpc ApproveCoupon (ApproveCouponRequest) returns (CouponResponse);
+  rpc ValidateCoupon (ValidateCouponRequest) returns (ValidateCouponResponse);
+  rpc ListPendingCoupons (ListPendingCouponsRequest) returns (ListCouponsResponse);
+
+  // Ratings
+  rpc CreateRating (CreateRatingRequest) returns (RatingResponse);
+  rpc GetRestaurantRating (GetRestaurantRatingRequest) returns (RestaurantRatingSummaryResponse);
+  rpc GetProductRating (GetProductRatingRequest) returns (ProductRatingSummaryResponse);
+
+  // Notifications (restaurant order inbox via RabbitMQ)
+  rpc GetRestaurantNotifications (GetRestaurantNotificationsRequest) returns (GetRestaurantNotificationsResponse);
+  rpc MarkNotificationsRead (MarkNotificationsReadRequest) returns (MarkNotificationsReadResponse);
 }
 
+// ===== EXISTING MESSAGES =====
 message ValidationRequest {
   string restaurant_id = 1;
   repeated OrderItem items = 2;
@@ -66,6 +89,9 @@ message Product {
 
 message ListRestaurantsRequest {
   bool active_only = 1;
+  string sort_by = 2;
+  repeated string tags = 3;
+  bool has_promotion = 4;
 }
 
 message RestaurantMessage {
@@ -76,6 +102,9 @@ message RestaurantMessage {
   string email = 5;
   string description = 6;
   bool is_active = 7;
+  repeated string tags = 8;
+  double avg_rating = 9;
+  int32 total_ratings = 10;
 }
 
 message ListRestaurantsResponse {
@@ -126,4 +155,186 @@ message CreateRestaurantRequest {
 message CreateRestaurantResponse {
   bool success = 1;
   string message = 2;
+}
+
+// ===== PROMOTIONS =====
+message Promotion {
+  string id = 1;
+  string restaurant_id = 2;
+  string title = 3;
+  string description = 4;
+  string type = 5;
+  double discount_value = 6;
+  bool is_active = 7;
+  string starts_at = 8;
+  string ends_at = 9;
+}
+
+message CreatePromotionRequest {
+  string restaurant_id = 1;
+  string title = 2;
+  string description = 3;
+  string type = 4;
+  double discount_value = 5;
+  string starts_at = 6;
+  string ends_at = 7;
+}
+
+message PromotionResponse {
+  bool success = 1;
+  string message = 2;
+  Promotion promotion = 3;
+}
+
+message ListPromotionsRequest {
+  string restaurant_id = 1;
+  bool active_only = 2;
+}
+
+message ListPromotionsResponse {
+  bool success = 1;
+  repeated Promotion promotions = 2;
+}
+
+message DeletePromotionRequest {
+  string id = 1;
+  string restaurant_id = 2;
+}
+
+message DeletePromotionResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// ===== COUPONS =====
+message Coupon {
+  string id = 1;
+  string restaurant_id = 2;
+  string code = 3;
+  string description = 4;
+  string type = 5;
+  double discount_value = 6;
+  double min_order_amount = 7;
+  int32 max_uses = 8;
+  int32 uses_count = 9;
+  bool is_approved = 10;
+  bool is_active = 11;
+  string expires_at = 12;
+}
+
+message CreateCouponRequest {
+  string restaurant_id = 1;
+  string code = 2;
+  string description = 3;
+  string type = 4;
+  double discount_value = 5;
+  double min_order_amount = 6;
+  int32 max_uses = 7;
+  string expires_at = 8;
+}
+
+message CouponResponse {
+  bool success = 1;
+  string message = 2;
+  Coupon coupon = 3;
+}
+
+message ListCouponsRequest {
+  string restaurant_id = 1;
+}
+
+message ListCouponsResponse {
+  bool success = 1;
+  repeated Coupon coupons = 2;
+}
+
+message ApproveCouponRequest {
+  string id = 1;
+}
+
+message ValidateCouponRequest {
+  string code = 1;
+  double order_amount = 2;
+}
+
+message ValidateCouponResponse {
+  bool valid = 1;
+  string message = 2;
+  double discount_amount = 3;
+  Coupon coupon = 4;
+}
+
+message ListPendingCouponsRequest {}
+
+// ===== RATINGS =====
+message CreateRatingRequest {
+  string order_id = 1;
+  string user_id = 2;
+  string restaurant_id = 3;
+  string delivery_person_id = 4;
+  string product_id = 5;
+  string type = 6;
+  int32 stars = 7;
+  string comment = 8;
+  bool recommended = 9;
+}
+
+message RatingResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetRestaurantRatingRequest {
+  string restaurant_id = 1;
+}
+
+message RestaurantRatingSummaryResponse {
+  string restaurant_id = 1;
+  double average_stars = 2;
+  int32 total_ratings = 3;
+}
+
+message GetProductRatingRequest {
+  string product_id = 1;
+}
+
+message ProductRatingSummaryResponse {
+  string product_id = 1;
+  int32 recommended_count = 2;
+  int32 not_recommended_count = 3;
+  int32 total_ratings = 4;
+  double recommendation_rate = 5;
+}
+
+// ===== NOTIFICATIONS =====
+message OrderNotification {
+  string id = 1;
+  string restaurant_id = 2;
+  string order_id = 3;
+  string user_id = 4;
+  double total_amount = 5;
+  string delivery_address = 6;
+  string items_json = 7;
+  bool is_read = 8;
+  string created_at = 9;
+}
+
+message GetRestaurantNotificationsRequest {
+  string restaurant_id = 1;
+  bool unread_only = 2;
+}
+
+message GetRestaurantNotificationsResponse {
+  bool success = 1;
+  repeated OrderNotification notifications = 2;
+  int32 unread_count = 3;
+}
+
+message MarkNotificationsReadRequest {
+  string restaurant_id = 1;
+  string notification_id = 2;
+}
+
+message MarkNotificationsReadResponse {
+  bool success = 1;
 }

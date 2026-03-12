@@ -23,4 +23,15 @@ export class ExchangeRateApiClient implements IExchangeRateApiClient {
 
     return parseFloat(rate);
   }
+
+  async fetchCurrencies(base: string): Promise<string[]> {
+    const url = `${this.baseUrl}/${base}`;
+    const response = await axios.get(url, { timeout: 5000 });
+
+    if (!response.data?.rates) {
+      throw new Error('No se pudo obtener la lista de divisas');
+    }
+
+    return Object.keys(response.data.rates).sort();
+  }
 }

@@ -2,6 +2,27 @@ version: '3.8'
 
 services:
   # ============================================
+  # MESSAGE BROKER
+  # ============================================
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: delivereats-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: delivereats
+      RABBITMQ_DEFAULT_PASS: delivereats_pass
+    networks:
+      - delivereats-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
   # BASES DE DATOS
   # ============================================
   
@@ -105,8 +126,11 @@ services:
       DB_NAME: catalog_db
       DB_USER: catalog_user
       DB_PASSWORD: catalog_password
+      RABBITMQ_URL: amqp://delivereats:delivereats_pass@rabbitmq:5672
     depends_on:
       catalog-db:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - delivereats-network
@@ -128,11 +152,14 @@ services:
       DB_USER: order_user
       DB_PASSWORD: order_password
       CATALOG_SERVICE_URL: catalog-service:50051
+      RABBITMQ_URL: amqp://delivereats:delivereats_pass@rabbitmq:5672
     depends_on:
       order-db:
         condition: service_healthy
       catalog-service:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
     networks:
       - delivereats-network
     restart: unless-stopped

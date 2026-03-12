@@ -125,6 +125,212 @@
   top: 90px;
 }
 
+/* ===== BARRA DE FILTROS ===== */
+.filter-bar {
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.filter-select-wrap {
+  position: relative;
+}
+
+.filter-select {
+  appearance: none;
+  background: #f5f6fa;
+  border: 1.5px solid #e2e5f0;
+  border-radius: 8px;
+  padding: 8px 32px 8px 12px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 0.2s;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.filter-select:focus { border-color: #667eea; }
+
+.filter-promo-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1.5px solid #e2e5f0;
+  background: #f5f6fa;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+  transition: all 0.2s;
+  user-select: none;
+  margin-top: 16px;
+}
+
+.filter-promo-toggle:hover { border-color: #667eea; color: #667eea; }
+
+.filter-promo-toggle.active {
+  background: #ede9fe;
+  border-color: #667eea;
+  color: #667eea;
+  font-weight: 600;
+}
+
+.promo-icon { font-size: 15px; }
+
+/* ── Tags de tipo de comida ── */
+.filter-tags-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.suggested-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-pill-btn {
+  padding: 5px 14px;
+  border-radius: 20px;
+  border: 1.5px solid #e2e5f0;
+  background: #f5f6fa;
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.tag-pill-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
+  background: #f0f0ff;
+}
+
+.tag-pill-btn.tag-pill-active {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+  font-weight: 600;
+}
+
+.custom-tag-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.custom-tag-input {
+  flex: 1;
+  padding: 7px 12px;
+  border: 1.5px solid #e2e5f0;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  background: #f5f6fa;
+}
+
+.custom-tag-input:focus { border-color: #667eea; background: white; }
+
+.btn-add-custom-tag {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #667eea;
+  color: white;
+  border: none;
+  font-size: 20px;
+  font-weight: 300;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.btn-add-custom-tag:hover { background: #5a6fd6; }
+.btn-add-custom-tag:disabled { background: #ccc; cursor: not-allowed; }
+
+.active-filter-tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.filter-label-sm {
+  font-size: 11px;
+  font-weight: 700;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.active-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #ede9fe;
+  color: #5b21b6;
+  border-radius: 20px;
+  padding: 3px 10px 3px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.active-tag-remove {
+  background: none;
+  border: none;
+  color: #7c3aed;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  margin-left: 2px;
+  display: flex;
+  align-items: center;
+}
+
+.active-tag-remove:hover { color: #dc2626; }
+
 /* ===== TÍTULOS ===== */
 .section-title {
   font-size: 20px;
@@ -824,4 +1030,55 @@
 @media (max-width: 600px) {
   .catalog-header h1 { font-size: 18px; }
   .section-title { font-size: 17px; }
+}
+
+/* ===== SELECTOR DE DIVISA ===== */
+.currency-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+
+.currency-label {
+  font-size: 13px;
+  color: #555;
+  white-space: nowrap;
+}
+
+.currency-select {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  background: white;
+  cursor: pointer;
+}
+
+.currency-converted {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: #f0f4ff;
+  border-left: 3px solid #667eea;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #333;
+}
+
+.currency-converted small.fx-rate-hint {
+  display: block;
+  font-size: 11px;
+  color: #888;
+  margin-top: 2px;
+}
+
+.fx-loading {
+  color: #999;
+  font-size: 13px;
+}
+
+.fx-error {
+  color: #e53e3e;
+  font-size: 13px;
 }

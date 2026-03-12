@@ -28,7 +28,8 @@ async function main() {
     const server = new grpc.Server();
 
     server.addService(fxProto.FxService.service, {
-      GetExchangeRate: handler.GetExchangeRate.bind(handler)
+      GetExchangeRate: handler.GetExchangeRate.bind(handler),
+      GetAvailableCurrencies: handler.GetAvailableCurrencies.bind(handler)
     });
 
     server.bindAsync(

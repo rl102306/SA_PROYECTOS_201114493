@@ -28,6 +28,18 @@ export class FxServiceClient {
       );
     });
   }
+
+  async getAvailableCurrencies(base: string = 'GTQ'): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client.GetAvailableCurrencies(
+        { base },
+        (error: any, response: any) => {
+          if (error) { reject(error); return; }
+          resolve(response);
+        }
+      );
+    });
+  }
 }
 
 export const fxServiceClient = new FxServiceClient();

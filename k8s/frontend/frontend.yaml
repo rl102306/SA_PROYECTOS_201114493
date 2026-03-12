@@ -1,10 +1,30 @@
+# =============================================================
+# DEPLOYMENT — frontend (Angular + nginx)
+# =============================================================
+# El frontend es una aplicación Angular 17 compilada a archivos
+# estáticos (HTML, CSS, JS) y servida por nginx.
+#
+# En producción, la imagen Docker:
+#   1. Compila Angular con "ng build --configuration production"
+#   2. Copia los archivos a nginx (/usr/share/nginx/html)
+#   3. nginx sirve la SPA y proxea las llamadas API
+#
+# ¿Cómo llama el frontend al API Gateway en Kubernetes?
+#   → nginx.conf tiene reglas de proxy para /auth, /catalog, /orders, etc.
+#   → Redirige esas rutas a api-gateway-service:3000 (ClusterIP interno)
+#   → El browser nunca se comunica directamente con el API Gateway;
+#     todo pasa por nginx del frontend (mismo origen, sin CORS)
+#
+# replicas: 2 → Alta disponibilidad del frontend
+# =============================================================
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
   namespace: delivereats
 spec:
-  replicas: 2
+  replicas: 1   # 1 réplica para ahorrar RAM en máquina con 8GB
   selector:
     matchLabels:
       app: frontend
@@ -16,8 +36,9 @@ spec:
       containers:
         - name: frontend
           image: delivereats/frontend:latest
+          imagePullPolicy: IfNotPresent   # Usa la imagen construida en Minikube
           ports:
-            - containerPort: 80
+            - containerPort: 80   # nginx escucha en el puerto 80
           resources:
             requests:
               memory: "64Mi"
@@ -25,37 +46,63 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "100m"
+          # readinessProbe: Verifica que nginx está sirviendo contenido.
+          # El Pod no recibe tráfico hasta que GET / responda con HTTP 200.
           readinessProbe:
             httpGet:
-              path: /
+              path: /        # Ruta raíz de la SPA de Angular
               port: 80
-            initialDelaySeconds: 5
+            initialDelaySeconds: 5    # nginx es rápido, 5s son suficientes
             periodSeconds: 5
+
 ---
+# =============================================================
+# SERVICE — frontend-service (ClusterIP)
+# =============================================================
+# Expone el frontend internamente.
+# El Ingress (definido abajo) redirige el tráfico externo aquí.
+# =============================================================
+
 apiVersion: v1
 kind: Service
 metadata:
   name: frontend-service
   namespace: delivereats
 spec:
+  type: ClusterIP   # Solo accesible dentro del cluster; el acceso exterior es via Ingress
   selector:
-    app: frontend
+    app: frontend   # Balancea entre los 2 Pods del Deployment
   ports:
     - port: 80
       targetPort: 80
-  type: ClusterIP
+
 ---
+# =============================================================
+# INGRESS — frontend-ingress
+# =============================================================
+# Regla de enrutamiento para el frontend.
+# El controlador nginx de Minikube recibe las peticiones en
+# http://delivereats.local y las redirige al frontend-service.
+#
+# Flujo completo de una petición de usuario:
+#   1. Browser → http://delivereats.local/
+#   2. Ingress Controller → frontend-service:80
+#   3. nginx (frontend Pod) → sirve index.html (Angular SPA)
+#   4. Angular carga, el usuario hace clic en "Login"
+#   5. Angular llama a /auth/login (URL relativa)
+#   6. nginx (frontend Pod) intercepta /auth/* → proxy a api-gateway-service:3000
+#   7. api-gateway → gRPC → auth-service:50052
+# =============================================================
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: frontend-ingress
   namespace: delivereats
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx
   rules:
-    - host: delivereats.local
+    - host: delivereats.local   # Hostname del frontend
       http:
         paths:
           - path: /

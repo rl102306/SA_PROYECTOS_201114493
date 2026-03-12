@@ -252,14 +252,5 @@ docker compose down
 docker compose down -v
 ```
 
----
 
-## Documentacion Completa
 
-Ver [DOCUMENTACION.md](DOCUMENTACION.md) para:
-- Explicacion detallada de cada microservicio
-- Flujos de negocio completos
-- Comunicacion gRPC entre servicios
-- Guia de Kubernetes
-- Variables de entorno
-- Modelo de base de datos

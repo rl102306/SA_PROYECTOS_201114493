@@ -8,6 +8,7 @@ import fxRoutes from './routes/fxRoutes';
 import paymentRoutes from './routes/paymentRoutes';
 import adminRoutes from './routes/adminRoutes';
 import deliveryRoutes from './routes/deliveryRoutes';
+import ratingRoutes from './routes/ratingRoutes';
 
 dotenv.config();
 
@@ -45,6 +46,7 @@ app.use('/fx', fxRoutes);
 app.use('/payments', paymentRoutes);
 app.use('/admin', adminRoutes);
 app.use('/deliveries', deliveryRoutes);
+app.use('/ratings', ratingRoutes);
 
 // Manejador de rutas no encontradas (404)
 app.use((req: Request, res: Response) => {

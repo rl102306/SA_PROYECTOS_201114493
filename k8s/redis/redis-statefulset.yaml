@@ -1,10 +1,30 @@
+# =============================================================
+# STATEFULSET — redis
+# =============================================================
+# Redis es la caché en memoria que usa fx-service para almacenar
+# los tipos de cambio obtenidos de la API externa (open.er-api.com).
+#
+# ¿Por qué StatefulSet?
+#   → Redis puede persistir datos en disco con appendonly.
+#   → El StatefulSet garantiza que el volumen no se borra al reiniciar.
+#
+# Flujo de fx-service con Redis:
+#   1. Cliente pide tipo de cambio USD→GTQ
+#   2. fx-service busca en Redis (caché): ¿existe el valor y no expiró?
+#      a. SÍ → devuelve el valor cacheado (respuesta rápida, sin hit a API)
+#      b. NO → llama a open.er-api.com, guarda en Redis, devuelve valor
+#
+# Comando para acceder a Redis dentro del cluster:
+#   kubectl exec -n delivereats -it redis-0 -- redis-cli
+# =============================================================
+
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: redis
   namespace: delivereats
 spec:
-  serviceName: redis
+  serviceName: redis   # Service asociado (definido en redis-service.yaml)
   replicas: 1
   selector:
     matchLabels:
@@ -16,9 +36,11 @@ spec:
     spec:
       containers:
         - name: redis
-          image: redis:7-alpine
+          image: redis:7-alpine   # Redis versión 7, imagen Alpine (ligera)
           ports:
-            - containerPort: 6379
+            - containerPort: 6379   # Puerto estándar de Redis
+          # "appendonly yes" activa el modo AOF (Append Only File):
+          # Redis escribe cada operación en disco para sobrevivir reinicios.
           command: ["redis-server", "--appendonly", "yes"]
           resources:
             requests:
@@ -29,7 +51,7 @@ spec:
               cpu: "100m"
           volumeMounts:
             - name: redis-data
-              mountPath: /data
+              mountPath: /data   # Redis guarda el AOF en /data
   volumeClaimTemplates:
     - metadata:
         name: redis-data
@@ -37,4 +59,4 @@ spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: 1Gi
+            storage: 1Gi   # Redis es caché, no necesita mucho espacio

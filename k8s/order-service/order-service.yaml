@@ -1,3 +1,7 @@
+# =============================================================
+# SECRET — order-db-secret
+# =============================================================
+
 apiVersion: v1
 kind: Secret
 metadata:
@@ -7,7 +11,18 @@ type: Opaque
 stringData:
   username: order_user
   password: order_password
+
 ---
+# =============================================================
+# STATEFULSET — order-db (PostgreSQL)
+# =============================================================
+# Base de datos exclusiva del order-service.
+# Almacena: pedidos, items de pedido, historial de estados.
+#
+# Mayor capacidad de almacenamiento (5Gi) porque los pedidos
+# acumulan historial a lo largo del tiempo.
+# =============================================================
+
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -57,21 +72,44 @@ spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: 5Gi
+            storage: 5Gi   # Mayor capacidad para historial de pedidos
+
 ---
+# =============================================================
+# SERVICE — order-db (ClusterIP)
+# =============================================================
+# DNS interno: order-db.delivereats.svc.cluster.local
+# Uso simplificado: order-db:5432
+# =============================================================
+
 apiVersion: v1
 kind: Service
 metadata:
   name: order-db
   namespace: delivereats
 spec:
+  type: ClusterIP
   selector:
     app: order-db
   ports:
     - port: 5432
       targetPort: 5432
-  clusterIP: None
+
 ---
+# =============================================================
+# DEPLOYMENT — order-service
+# =============================================================
+# Microservicio que gestiona el ciclo de vida de los pedidos.
+# Estados: PENDING → CONFIRMED → PREPARING → READY → IN_TRANSIT → DELIVERED
+#                                                               ↘ CANCELLED
+#
+# Flujo de creación de pedido:
+#   1. Cliente crea pedido → order-service verifica con catalog-service
+#   2. Restaurante acepta → estado CONFIRMED
+#   3. Repartidor toma el pedido → estado IN_TRANSIT
+#   4. Entregado → estado DELIVERED → payment-service procesa pago
+# =============================================================
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -90,6 +128,7 @@ spec:
       containers:
         - name: order-service
           image: delivereats/order-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 50053
           env:
@@ -113,22 +152,32 @@ spec:
                 secretKeyRef:
                   name: order-db-secret
                   key: password
+            # order-service consulta catalog-service para validar productos
             - name: CATALOG_SERVICE_URL
-              value: catalog-service:50051
+              value: catalog-service:50051   # Service Name:Puerto del catalog-service
           resources:
             requests:
-              memory: "128Mi"
-              cpu: "100m"
+              memory: "64Mi"
+              cpu: "50m"
             limits:
               memory: "256Mi"
-              cpu: "200m"
+              cpu: "300m"
+
 ---
+# =============================================================
+# SERVICE — order-service (ClusterIP)
+# =============================================================
+# Usado por: api-gateway (ORDER_SERVICE_URL=order-service:50053)
+#            payment-service (ORDER_SERVICE_URL=order-service:50053)
+# =============================================================
+
 apiVersion: v1
 kind: Service
 metadata:
   name: order-service
   namespace: delivereats
 spec:
+  type: ClusterIP
   selector:
     app: order-service
   ports:

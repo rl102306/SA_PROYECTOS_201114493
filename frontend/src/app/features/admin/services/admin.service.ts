@@ -27,10 +27,14 @@ export class AdminService {
     if (filters.from) params = params.set('from', filters.from);
     if (filters.to) params = params.set('to', filters.to);
     if (filters.userId) params = params.set('userId', filters.userId);
+    return this.http.get(`${this.apiUrl}/admin/orders`, { headers: this.getHeaders(), params });
+  }
 
-    return this.http.get(`${this.apiUrl}/admin/orders`, {
-      headers: this.getHeaders(),
-      params
-    });
+  getPendingCoupons(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/admin/coupons/pending`, { headers: this.getHeaders() });
+  }
+
+  approveCoupon(id: string): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/admin/coupons/${id}/approve`, {}, { headers: this.getHeaders() });
   }
 }

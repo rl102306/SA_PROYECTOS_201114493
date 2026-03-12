@@ -237,4 +237,31 @@ router.post('/orders/:orderId/refund', authMiddleware, adminMiddleware, async (r
   }
 });
 
+// ===== COUPON MANAGEMENT (ADMIN) =====
+
+// GET /admin/coupons/pending — listar cupones pendientes de aprobación
+router.get('/coupons/pending', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
+  try {
+    const response = await catalogServiceClient.listPendingCoupons();
+    res.json({ success: true, coupons: response.coupons || [] });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message || 'Error al obtener cupones pendientes' });
+  }
+});
+
+// PATCH /admin/coupons/:id/approve — aprobar cupón
+router.patch('/coupons/:id/approve', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const response = await catalogServiceClient.approveCoupon(id);
+    res.status(response.success ? 200 : 400).json({
+      success: response.success,
+      message: response.message,
+      coupon: response.coupon
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message || 'Error al aprobar cupón' });
+  }
+});
+
 export default router;

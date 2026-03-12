@@ -9,6 +9,7 @@ import { AdminService } from '../services/admin.service';
   styleUrls: ['./admin-orders.component.css']
 })
 export class AdminOrdersComponent implements OnInit {
+  activeTab: 'orders' | 'coupons' = 'orders';
   orders: any[] = [];
   isLoading = false;
   errorMessage = '';
@@ -18,6 +19,11 @@ export class AdminOrdersComponent implements OnInit {
   selectedStatus = 'DELIVERED,CANCELLED';
   dateFrom = '';
   dateTo = '';
+
+  // Cupones pendientes
+  pendingCoupons: any[] = [];
+  isLoadingCoupons = false;
+  approvingCouponId: string | null = null;
 
   // Modal foto
   selectedPhoto: string | null = null;
@@ -61,6 +67,37 @@ export class AdminOrdersComponent implements OnInit {
         this.errorMessage = error.error?.message || 'Error al cargar pedidos';
         this.isLoading = false;
       }
+    });
+  }
+
+  setTab(tab: 'orders' | 'coupons'): void {
+    this.activeTab = tab;
+    if (tab === 'coupons') this.loadPendingCoupons();
+  }
+
+  loadPendingCoupons(): void {
+    this.isLoadingCoupons = true;
+    this.adminService.getPendingCoupons().subscribe({
+      next: (res: any) => {
+        this.pendingCoupons = res.coupons || [];
+        this.isLoadingCoupons = false;
+      },
+      error: () => { this.isLoadingCoupons = false; }
+    });
+  }
+
+  approveCoupon(coupon: any): void {
+    if (this.approvingCouponId) return;
+    this.approvingCouponId = coupon.id;
+    this.adminService.approveCoupon(coupon.id).subscribe({
+      next: (res: any) => {
+        if (res.success) {
+          coupon.is_approved = true;
+          this.successMessage = `Cupón ${coupon.code} aprobado`;
+        }
+        this.approvingCouponId = null;
+      },
+      error: () => { this.approvingCouponId = null; }
     });
   }
 
