@@ -307,6 +307,44 @@ gcloud/
 .azure/
 
 # ============================================
+# REDIS
+# ============================================
+# Archivo de persistencia de Redis (generado automáticamente al detener Redis)
+dump.rdb
+appendonly.aof
+
+# ============================================
+# KUBERNETES — CREDENCIALES
+# ============================================
+# Archivos kubeconfig con credenciales de cluster (nunca commit)
+kubeconfig
+*.kubeconfig
+.kube/
+
+# ============================================
+# FOTOS DE ENTREGAS
+# ============================================
+# Fotos base64 o archivos subidos por repartidores al marcar entrega como DELIVERED
+uploads/
+*/uploads/
+delivery-photos/
+
+# ============================================
+# ARCHIVOS .env DE CADA SERVICIO
+# ============================================
+# Los .env reales de cada microservicio con credenciales reales
+auth-service/.env
+restaurant-catalog-service/.env
+catalog-service/.env
+order-service/.env
+delivery-service/.env
+notification-service/.env
+fx-service/.env
+payment-service/.env
+api-gateway/.env
+frontend/.env
+
+# ============================================
 # PROTOBUF GENERADOS (Opcional)
 # ============================================
 # Descomenta si generas código desde .proto
@@ -376,6 +414,11 @@ PERSONAL.md
 # ARCHIVOS DE SISTEMA
 # ============================================
 .localized
+
+# ============================================
+# CLAUDE CODE (herramienta de IA — sesion local)
+# ============================================
+.claude/
 
 # ============================================
 # FIN

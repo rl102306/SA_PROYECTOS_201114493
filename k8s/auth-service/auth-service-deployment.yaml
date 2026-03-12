@@ -1,0 +1,142 @@
+# =============================================================
+# SERVICE — auth-db (ClusterIP)
+# =============================================================
+# Un Service expone uno o varios Pods bajo un nombre DNS estable.
+# Sin Service, los Pods solo son accesibles por su IP, que cambia
+# cada vez que el Pod se reinicia.
+#
+# type: ClusterIP (valor por defecto cuando no se especifica):
+#   → Asigna una IP virtual interna al Service.
+#   → Solo accesible desde dentro del cluster.
+#   → auth-service se conecta a "auth-db:5432" y Kubernetes resuelve
+#     ese nombre a la IP del Service, que redirige al Pod auth-db-0.
+#
+# NOTA: Antes era "clusterIP: None" (headless service). Se cambió a
+# ClusterIP estándar para consistencia con el resto de servicios.
+#
+# Comando para ver los services:
+#   kubectl get services -n delivereats
+# =============================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-db          # DNS interno: auth-db.delivereats.svc.cluster.local
+  namespace: delivereats
+spec:
+  type: ClusterIP        # IP virtual interna, accesible solo dentro del cluster
+  selector:
+    app: auth-db         # Redirige el tráfico a Pods con el label app=auth-db
+  ports:
+    - port: 5432         # Puerto del Service (lo que usan los clientes para conectarse)
+      targetPort: 5432   # Puerto del contenedor PostgreSQL (al que se redirige)
+
+---
+# =============================================================
+# DEPLOYMENT — auth-service
+# =============================================================
+# Un Deployment gestiona Pods sin estado (stateless).
+# Es apropiado para microservicios que no necesitan almacenamiento
+# persistente propio. Kubernetes lo reinicia automáticamente si falla.
+#
+# auth-service es un microservicio Node.js que:
+#   - Expone una API gRPC en el puerto 50052
+#   - Maneja registro, login y verificación de JWT
+#   - Se conecta a auth-db (PostgreSQL) para persistir usuarios
+#
+# Flujo: API Gateway → gRPC → auth-service:50052 → auth-db:5432
+# =============================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: delivereats
+spec:
+  replicas: 1   # Una instancia del microservicio
+  selector:
+    matchLabels:
+      app: auth-service   # Gestiona Pods con este label
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+        - name: auth-service
+          image: delivereats/auth-service:latest
+          # IfNotPresent: usa la imagen local si ya existe.
+          # En Minikube con "eval $(minikube docker-env)" la imagen
+          # se construye directamente en el daemon de Minikube,
+          # por lo que siempre estará disponible localmente.
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50052   # Puerto gRPC del microservicio
+
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: GRPC_PORT
+              value: "50052"         # Puerto en el que escucha el servidor gRPC
+
+            # Conexión a la base de datos:
+            # "auth-db" resuelve al Service auth-db (definido arriba)
+            - name: DB_HOST
+              value: auth-db         # Nombre DNS del Service de la BD
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: auth_db
+
+            # Credenciales leídas del Secret (nunca en texto plano en el YAML)
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: auth-db-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: auth-db-secret
+                  key: password
+
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secret
+                  key: jwt-secret
+            - name: JWT_EXPIRES_IN
+              value: 24h
+
+          # Límites de recursos:
+          # requests → mínimo garantizado (para el scheduler de K8s)
+          # limits   → máximo permitido (el contenedor se mata si supera esto)
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+
+---
+# =============================================================
+# SERVICE — auth-service (ClusterIP)
+# =============================================================
+# Expone el microservicio auth-service internamente en el cluster.
+# El API Gateway se conecta a "auth-service:50052" para hacer
+# llamadas gRPC a este microservicio.
+# =============================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: delivereats
+spec:
+  type: ClusterIP   # Accesible solo dentro del cluster
+  selector:
+    app: auth-service
+  ports:
+    - port: 50052         # Puerto del Service
+      targetPort: 50052   # Puerto del contenedor gRPC

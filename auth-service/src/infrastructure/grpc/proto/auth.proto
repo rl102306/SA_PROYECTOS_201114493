@@ -6,6 +6,16 @@ service AuthService {
   rpc Register (RegisterRequest) returns (RegisterResponse);
   rpc Login (LoginRequest) returns (LoginResponse);
   rpc ValidateToken (ValidateTokenRequest) returns (ValidateTokenResponse);
+  rpc GetUserById (GetUserByIdRequest) returns (GetUserByIdResponse);
+}
+
+message GetUserByIdRequest {
+  string user_id = 1;
+}
+
+message GetUserByIdResponse {
+  bool found = 1;
+  User user = 2;
 }
 
 message RegisterRequest {
@@ -43,6 +53,7 @@ message ValidateTokenResponse {
   string user_id = 2;
   string email = 3;
   string role = 4;
+  string restaurant_id = 5;
 }
 
 message User {

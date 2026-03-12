@@ -2,6 +2,7 @@ export interface JwtPayload {
   userId: string;
   email: string;
   role: string;
+  restaurantId?: string;
 }
 
 export interface IJwtGenerator {

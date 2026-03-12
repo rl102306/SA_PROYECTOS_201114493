@@ -13,6 +13,11 @@ export interface SendNotificationDTO {
   restaurantName?: string;
   deliveryPersonName?: string;
   cancellationReason?: string;
+  amountGtq?: number;
+  amountUsd?: number;
+  exchangeRate?: number;
+  paymentMethod?: string;
+  currency?: string;
   status: string;
 }
 
@@ -54,9 +59,9 @@ export class SendNotificationUseCase {
             <h2>¡Gracias por tu pedido, ${notification.userName}!</h2>
             <p><strong>Número de Orden:</strong> ${notification.orderNumber}</p>
             <p><strong>Productos:</strong> ${notification.products}</p>
-            <p><strong>Monto Total:</strong> $${notification.totalAmount?.toFixed(2)}</p>
-            <p><strong>Estado:</strong> ${notification.status}</p>
-            <p><strong>Fecha:</strong> ${notification.createdAt.toLocaleString()}</p>
+            <p><strong>Monto Total:</strong> Q${notification.totalAmount?.toFixed(2)}</p>
+            <p><strong>Fecha de creación:</strong> ${notification.createdAt.toLocaleString('es-GT')}</p>
+            <p><strong>Estado:</strong> CREADA</p>
             <hr>
             <p>Te notificaremos cuando tu pedido esté en camino.</p>
           `
@@ -70,8 +75,8 @@ export class SendNotificationUseCase {
             <p>Hola ${notification.userName},</p>
             <p>Tu orden ha sido cancelada exitosamente.</p>
             <p><strong>Productos:</strong> ${notification.products}</p>
-            <p><strong>Fecha de Cancelación:</strong> ${notification.createdAt.toLocaleString()}</p>
-            <p><strong>Estado:</strong> ${notification.status}</p>
+            <p><strong>Fecha de Cancelación:</strong> ${notification.createdAt.toLocaleString('es-GT')}</p>
+            <p><strong>Estado:</strong> CANCELADA</p>
           `
         };
 
@@ -84,7 +89,7 @@ export class SendNotificationUseCase {
             <p><strong>Número de Orden:</strong> ${notification.orderNumber}</p>
             <p><strong>Repartidor:</strong> ${notification.deliveryPersonName}</p>
             <p><strong>Productos:</strong> ${notification.products}</p>
-            <p><strong>Estado:</strong> ${notification.status}</p>
+            <p><strong>Estado:</strong> EN CAMINO</p>
             <p>Tu pedido llegará pronto.</p>
           `
         };
@@ -98,7 +103,7 @@ export class SendNotificationUseCase {
             <p>Lamentamos informarte que ${notification.restaurantName} ha cancelado tu orden.</p>
             <p><strong>Razón:</strong> ${notification.cancellationReason}</p>
             <p><strong>Productos:</strong> ${notification.products}</p>
-            <p><strong>Estado:</strong> ${notification.status}</p>
+            <p><strong>Estado:</strong> CANCELADA</p>
           `
         };
 
@@ -112,7 +117,7 @@ export class SendNotificationUseCase {
             <p><strong>Repartidor:</strong> ${notification.deliveryPersonName}</p>
             <p><strong>Razón:</strong> ${notification.cancellationReason}</p>
             <p><strong>Productos:</strong> ${notification.products}</p>
-            <p><strong>Estado:</strong> ${notification.status}</p>
+            <p><strong>Estado:</strong> CANCELADA</p>
           `
         };
 
@@ -125,7 +130,7 @@ export class SendNotificationUseCase {
             <p>${notification.restaurantName} no pudo procesar tu orden.</p>
             <p><strong>Número de Orden:</strong> ${notification.orderNumber}</p>
             <p><strong>Productos:</strong> ${notification.products}</p>
-            <p><strong>Estado:</strong> ${notification.status}</p>
+            <p><strong>Estado:</strong> RECHAZADA</p>
           `
         };
 
@@ -138,7 +143,44 @@ export class SendNotificationUseCase {
             <p>Tu pedido ha sido entregado exitosamente.</p>
             <p><strong>Número de Orden:</strong> ${notification.orderNumber}</p>
             <p><strong>Productos:</strong> ${notification.products}</p>
+            <p><strong>Estado:</strong> ENTREGADA</p>
             <p>¡Gracias por tu preferencia!</p>
+          `
+        };
+
+      case NotificationType.PAYMENT_CONFIRMED:
+        return {
+          subject: `Orden #${notification.orderNumber} - Pago Confirmado`,
+          html: `
+            <h2>✅ ¡Pago Confirmado! - Delivereats</h2>
+            <p>Hola ${notification.userName},</p>
+            <p>Tu pago ha sido procesado exitosamente.</p>
+            <table style="border-collapse:collapse;width:100%;max-width:500px;">
+              <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Número de Orden</strong></td><td style="padding:8px;border:1px solid #ddd;">#${notification.orderNumber}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Método de Pago</strong></td><td style="padding:8px;border:1px solid #ddd;">${notification.paymentMethod || '-'}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Monto en GTQ</strong></td><td style="padding:8px;border:1px solid #ddd;">Q ${notification.amountGtq?.toFixed(2)}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Monto en USD</strong></td><td style="padding:8px;border:1px solid #ddd;">$ ${notification.amountUsd?.toFixed(2)}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Tasa de Cambio</strong></td><td style="padding:8px;border:1px solid #ddd;">1 USD = Q ${notification.exchangeRate?.toFixed(4)}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Estado</strong></td><td style="padding:8px;border:1px solid #ddd;">${notification.status}</td></tr>
+            </table>
+            <p style="margin-top:16px;">Tu pedido está siendo procesado. ¡Gracias por tu compra!</p>
+          `
+        };
+
+      case NotificationType.PAYMENT_REFUNDED:
+        return {
+          subject: `Orden #${notification.orderNumber} - Reembolso Procesado`,
+          html: `
+            <h2>💰 Reembolso Procesado - Delivereats</h2>
+            <p>Hola ${notification.userName},</p>
+            <p>Tu reembolso ha sido procesado correctamente.</p>
+            <table style="border-collapse:collapse;width:100%;max-width:500px;">
+              <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Número de Orden</strong></td><td style="padding:8px;border:1px solid #ddd;">#${notification.orderNumber}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Monto Reembolsado en GTQ</strong></td><td style="padding:8px;border:1px solid #ddd;">Q ${notification.amountGtq?.toFixed(2)}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Monto Reembolsado en USD</strong></td><td style="padding:8px;border:1px solid #ddd;">$ ${notification.amountUsd?.toFixed(2)}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #ddd;"><strong>Estado</strong></td><td style="padding:8px;border:1px solid #ddd;">${notification.status}</td></tr>
+            </table>
+            <p style="margin-top:16px;">El reembolso se reflejará en tu cuenta en los próximos días hábiles.</p>
           `
         };
 

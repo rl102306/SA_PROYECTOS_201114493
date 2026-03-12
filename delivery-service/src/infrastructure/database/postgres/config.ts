@@ -31,9 +31,20 @@ export const initializeDatabase = async (pool: Pool): Promise<void> => {
         estimated_time INTEGER,
         actual_delivery_time TIMESTAMP,
         cancellation_reason TEXT,
+        delivery_photo TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- Agregar columna si ya existe la tabla (para actualizaciones en caliente)
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'deliveries' AND column_name = 'delivery_photo'
+        ) THEN
+          ALTER TABLE deliveries ADD COLUMN delivery_photo TEXT;
+        END IF;
+      END $$;
 
       CREATE INDEX IF NOT EXISTS idx_deliveries_order_id ON deliveries(order_id);
       CREATE INDEX IF NOT EXISTS idx_deliveries_status ON deliveries(status);

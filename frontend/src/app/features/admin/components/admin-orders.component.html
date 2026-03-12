@@ -1,0 +1,229 @@
+<div class="admin-container">
+  <!-- Header -->
+  <div class="admin-header">
+    <div class="header-left">
+      <h1>{{ currentUserRole === 'RESTAURANT' ? 'Panel de Restaurante' : 'Panel Administrativo' }}</h1>
+      <p>Pedidos Finalizados y Cancelados</p>
+    </div>
+    <button class="btn btn-logout" (click)="logout()">Cerrar Sesión</button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-panel-wrapper">
+  <div class="tabs-bar" *ngIf="currentUserRole !== 'RESTAURANT'">
+    <button class="tab-btn" [class.active]="activeTab === 'orders'" (click)="setTab('orders')">
+      📦 Pedidos
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'coupons'" (click)="setTab('coupons')">
+      🏷️ Aprobar Cupones
+      <span class="tab-badge" [class.badge-alert]="pendingCoupons.length > 0" *ngIf="pendingCoupons.length > 0">{{ pendingCoupons.length }}</span>
+    </button>
+  </div>
+
+  <!-- Mensajes globales -->
+  <div class="alert alert-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
+
+  <!-- ═══════════════════════════════════════ TAB PEDIDOS ═══════════════════════════════════════ -->
+  <ng-container *ngIf="activeTab === 'orders'">
+
+    <!-- Filtros -->
+    <div class="filters-card">
+      <h3>Filtros</h3>
+      <div class="filters-row">
+        <div class="filter-group">
+          <label>Estado</label>
+          <select [(ngModel)]="selectedStatus" class="form-control">
+            <option *ngFor="let opt of statusOptions" [value]="opt.value">{{ opt.label }}</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label>Fecha Desde</label>
+          <input type="date" [(ngModel)]="dateFrom" class="form-control" />
+        </div>
+
+        <div class="filter-group">
+          <label>Fecha Hasta</label>
+          <input type="date" [(ngModel)]="dateTo" class="form-control" />
+        </div>
+
+        <div class="filter-group filter-actions">
+          <button class="btn btn-primary" (click)="loadOrders()" [disabled]="isLoading">
+            {{ isLoading ? 'Buscando...' : 'Buscar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-state" *ngIf="isLoading">
+      <p>Cargando pedidos...</p>
+    </div>
+
+    <!-- Tabla de pedidos -->
+    <div class="orders-table-container" *ngIf="!isLoading">
+      <div class="table-header">
+        <span>{{ orders.length }} pedido(s) encontrado(s)</span>
+      </div>
+
+      <div class="empty-state" *ngIf="orders.length === 0">
+        <p>No se encontraron pedidos con los filtros seleccionados.</p>
+      </div>
+
+      <table class="orders-table" *ngIf="orders.length > 0">
+        <thead>
+          <tr>
+            <th>ID Pedido</th>
+            <th>Restaurante</th>
+            <th>Productos</th>
+            <th>Total</th>
+            <th>Estado</th>
+            <th>Cancelado por</th>
+            <th>Fecha</th>
+            <th>Foto Entrega</th>
+            <th *ngIf="currentUserRole === 'ADMIN'">Reembolso</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let order of orders">
+            <td class="order-id">{{ order.id?.substring(0, 8) }}...</td>
+            <td>{{ order.restaurant_id?.substring(0, 8) }}...</td>
+            <td>
+              <span *ngFor="let item of parseItems(order.items)" class="item-badge">
+                {{ item.productId || item.product_id }} x{{ item.quantity }}
+              </span>
+            </td>
+            <td>
+              <span class="amount-gtq">GTQ {{ order.total_amount | number:'1.2-2' }}</span>
+            </td>
+            <td>
+              <span class="status-badge" [class]="'status-' + order.status?.toLowerCase()">
+                {{ statusLabel(order.status) }}
+              </span>
+            </td>
+            <td class="cancel-cell">
+              <ng-container *ngIf="order.status === 'CANCELLED'; else noCancellation">
+                <span class="cancel-by-badge"
+                  [class.cancel-by-delivery]="order.cancelled_by === 'REPARTIDOR'"
+                  [class.cancel-by-restaurant]="order.cancelled_by === 'RESTAURANTE'">
+                  {{ order.cancelled_by || '—' }}
+                </span>
+                <div class="cancel-reason" *ngIf="order.cancellation_reason">
+                  {{ order.cancellation_reason }}
+                </div>
+              </ng-container>
+              <ng-template #noCancellation><span class="no-photo">—</span></ng-template>
+            </td>
+            <td>{{ order.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
+            <td class="photo-cell">
+              <div *ngIf="order.delivery_photo; else noPhoto">
+                <img
+                  [src]="'data:image/jpeg;base64,' + order.delivery_photo"
+                  class="photo-thumbnail"
+                  alt="Foto de entrega"
+                  (click)="openPhoto(order.delivery_photo)"
+                  title="Click para ver completa"
+                />
+              </div>
+              <ng-template #noPhoto>
+                <span class="no-photo">—</span>
+              </ng-template>
+            </td>
+            <td *ngIf="currentUserRole === 'ADMIN'">
+              <ng-container *ngIf="order.status === 'CANCELLED' && !order.refunded">
+                <button
+                  class="btn btn-refund"
+                  (click)="approveRefund(order)"
+                  [disabled]="refundingOrderId === order.id"
+                >
+                  {{ refundingOrderId === order.id ? 'Procesando...' : '💰 Aprobar Reembolso' }}
+                </button>
+              </ng-container>
+              <span *ngIf="order.status !== 'CANCELLED' && order.status !== 'REFUNDED'" class="no-photo">—</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </ng-container>
+
+  <!-- ═══════════════════════════════════════ TAB CUPONES ═══════════════════════════════════════ -->
+  <ng-container *ngIf="activeTab === 'coupons'">
+
+    <div class="coupons-section">
+      <div class="section-header">
+        <h2>Cupones Pendientes de Aprobación</h2>
+        <button class="btn btn-secondary" (click)="loadPendingCoupons()" [disabled]="isLoadingCoupons">
+          {{ isLoadingCoupons ? 'Cargando...' : '🔄 Actualizar' }}
+        </button>
+      </div>
+
+      <div class="loading-state" *ngIf="isLoadingCoupons">
+        <p>Cargando cupones...</p>
+      </div>
+
+      <div class="empty-state" *ngIf="!isLoadingCoupons && pendingCoupons.length === 0">
+        <p>✅ No hay cupones pendientes de aprobación.</p>
+      </div>
+
+      <table class="orders-table coupons-table" *ngIf="!isLoadingCoupons && pendingCoupons.length > 0">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Descripción</th>
+            <th>Restaurante</th>
+            <th>Tipo</th>
+            <th>Descuento</th>
+            <th>Mín. Pedido</th>
+            <th>Usos Máx.</th>
+            <th>Vence</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let coupon of pendingCoupons">
+            <td><strong class="coupon-code">{{ coupon.code }}</strong></td>
+            <td>{{ coupon.description || '—' }}</td>
+            <td class="order-id">{{ coupon.restaurant_id?.substring(0, 8) }}...</td>
+            <td>
+              <span class="type-badge" [class.type-percentage]="coupon.type === 'PERCENTAGE'" [class.type-fixed]="coupon.type === 'FIXED'">
+                {{ coupon.type === 'PERCENTAGE' ? '%' : 'GTQ' }}
+              </span>
+            </td>
+            <td>
+              <strong>
+                {{ coupon.type === 'PERCENTAGE' ? coupon.discount_value + '%' : 'GTQ ' + (coupon.discount_value | number:'1.2-2') }}
+              </strong>
+            </td>
+            <td>{{ coupon.min_order_amount > 0 ? ('GTQ ' + (coupon.min_order_amount | number:'1.2-2')) : '—' }}</td>
+            <td>{{ coupon.max_uses > 0 ? coupon.max_uses : 'Ilimitado' }}</td>
+            <td>{{ coupon.expires_at | date:'dd/MM/yyyy' }}</td>
+            <td>
+              <button
+                class="btn btn-approve"
+                (click)="approveCoupon(coupon)"
+                [disabled]="approvingCouponId === coupon.id || coupon.is_approved"
+              >
+                <span *ngIf="approvingCouponId === coupon.id">Aprobando...</span>
+                <span *ngIf="approvingCouponId !== coupon.id && !coupon.is_approved">✅ Aprobar</span>
+                <span *ngIf="coupon.is_approved" class="status-badge status-delivered">Aprobado</span>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </ng-container>
+  </div><!-- /tab-panel-wrapper -->
+
+  <!-- Modal foto completa -->
+  <div class="photo-modal" *ngIf="selectedPhoto" (click)="closePhoto()">
+    <div class="photo-modal-content" (click)="$event.stopPropagation()">
+      <button class="modal-close" (click)="closePhoto()">✕</button>
+      <img [src]="'data:image/jpeg;base64,' + selectedPhoto" alt="Foto de entrega" />
+    </div>
+  </div>
+</div>

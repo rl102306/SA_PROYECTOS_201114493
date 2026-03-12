@@ -43,7 +43,8 @@ export class DIContainer {
     const authServiceHandler = new AuthServiceHandler(
       registerUserUseCase,
       loginUserUseCase,
-      jwtGenerator
+      jwtGenerator,
+      userRepository
     );
     this.services.set('AuthServiceHandler', authServiceHandler);
   }

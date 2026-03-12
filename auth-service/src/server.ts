@@ -41,7 +41,8 @@ async function startServer() {
   server.addService(authProto.AuthService.service, {
     Register: handler.Register.bind(handler),
     Login: handler.Login.bind(handler),
-    ValidateToken: handler.ValidateToken.bind(handler)
+    ValidateToken: handler.ValidateToken.bind(handler),
+    GetUserById: handler.GetUserById.bind(handler)
   });
 
   server.bindAsync(

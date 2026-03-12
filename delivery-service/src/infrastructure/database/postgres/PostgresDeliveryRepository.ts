@@ -10,8 +10,8 @@ export class PostgresDeliveryRepository implements IDeliveryRepository {
       INSERT INTO deliveries (
         id, order_id, delivery_person_id, delivery_person_name, status,
         pickup_address, delivery_address, estimated_time, actual_delivery_time,
-        cancellation_reason, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        cancellation_reason, delivery_photo, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *
     `;
 
@@ -26,6 +26,7 @@ export class PostgresDeliveryRepository implements IDeliveryRepository {
       delivery.estimatedTime || null,
       delivery.actualDeliveryTime || null,
       delivery.cancellationReason || null,
+      delivery.deliveryPhoto || null,
       delivery.createdAt,
       delivery.updatedAt
     ];
@@ -86,7 +87,8 @@ export class PostgresDeliveryRepository implements IDeliveryRepository {
         status = $4,
         actual_delivery_time = $5,
         cancellation_reason = $6,
-        updated_at = $7
+        delivery_photo = $7,
+        updated_at = $8
       WHERE id = $1
       RETURNING *
     `;
@@ -98,6 +100,7 @@ export class PostgresDeliveryRepository implements IDeliveryRepository {
       delivery.status,
       delivery.actualDeliveryTime || null,
       delivery.cancellationReason || null,
+      delivery.deliveryPhoto || null,
       delivery.updatedAt
     ];
 
@@ -117,6 +120,7 @@ export class PostgresDeliveryRepository implements IDeliveryRepository {
       estimatedTime: row.estimated_time,
       actualDeliveryTime: row.actual_delivery_time,
       cancellationReason: row.cancellation_reason,
+      deliveryPhoto: row.delivery_photo,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at)
     });

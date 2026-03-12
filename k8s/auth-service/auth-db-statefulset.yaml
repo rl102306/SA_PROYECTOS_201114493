@@ -1,0 +1,86 @@
+# =============================================================
+# STATEFULSET — auth-db (PostgreSQL)
+# =============================================================
+# Un StatefulSet es como un Deployment pero para aplicaciones
+# con estado (bases de datos). Garantiza:
+#   - Nombre de Pod predecible y estable: auth-db-0
+#   - Volumen persistente único por Pod (no se borra al reiniciar)
+#   - Orden de inicio/parada determinista
+#
+# ¿Por qué StatefulSet y no Deployment para la BD?
+#   → Un Deployment puede tener múltiples réplicas que comparten
+#     el mismo volumen (problemático para PostgreSQL).
+#   → Un StatefulSet da a cada réplica su propio PersistentVolume.
+#
+# Comando para ver el StatefulSet:
+#   kubectl get statefulset -n delivereats
+# =============================================================
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: auth-db          # El Pod se llamará auth-db-0
+  namespace: delivereats
+spec:
+  serviceName: auth-db   # Nombre del Service asociado (definido en auth-service-deployment.yaml)
+                         # Kubernetes usa este nombre para construir el DNS del Pod
+  replicas: 1            # Una sola instancia de PostgreSQL
+  selector:
+    matchLabels:
+      app: auth-db       # El StatefulSet gestiona los Pods que tengan este label
+
+  # Plantilla del Pod que se creará
+  template:
+    metadata:
+      labels:
+        app: auth-db     # Label que identifica al Pod (lo usa el Service para encontrarlo)
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine   # Imagen oficial de PostgreSQL versión 15, Alpine (imagen pequeña)
+          ports:
+            - containerPort: 5432     # Puerto estándar de PostgreSQL dentro del contenedor
+
+          env:
+            # Nombre de la base de datos que PostgreSQL creará al arrancar
+            - name: POSTGRES_DB
+              value: auth_db
+
+            # El usuario y contraseña se leen del Secret (no se hardcodean aquí)
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: auth-db-secret   # Nombre del Secret definido en auth-secret.yaml
+                  key: username          # Clave dentro del Secret
+
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: auth-db-secret
+                  key: password
+
+          # readinessProbe: Kubernetes verifica si el Pod está listo para recibir tráfico.
+          # El Pod NO recibirá tráfico hasta que esta prueba sea exitosa.
+          # pg_isready devuelve 0 si PostgreSQL acepta conexiones.
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "auth_user", "-d", "auth_db"]
+            initialDelaySeconds: 10   # Espera 10s antes del primer chequeo
+            periodSeconds: 5          # Repite cada 5s hasta que sea exitoso
+
+          # Monta el volumen persistente en la ruta de datos de PostgreSQL
+          volumeMounts:
+            - name: auth-db-data
+              mountPath: /var/lib/postgresql/data   # Ruta donde PostgreSQL guarda sus archivos
+
+  # volumeClaimTemplates: Define el PersistentVolumeClaim (PVC) que se creará
+  # automáticamente para cada réplica del StatefulSet.
+  # Minikube provee un StorageClass por defecto que crea el volumen automáticamente.
+  volumeClaimTemplates:
+    - metadata:
+        name: auth-db-data   # Debe coincidir con el nombre en volumeMounts
+      spec:
+        accessModes: ["ReadWriteOnce"]   # Solo un Pod puede leer/escribir a la vez (OK para BD)
+        resources:
+          requests:
+            storage: 2Gi               # Espacio en disco reservado para esta BD

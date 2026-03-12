@@ -37,7 +37,9 @@ async function main() {
       SendOrderCancelledNotification: handler.SendOrderCancelledNotification.bind(handler),
       SendOrderInTransitNotification: handler.SendOrderInTransitNotification.bind(handler),
       SendOrderRejectedNotification: handler.SendOrderRejectedNotification.bind(handler),
-      SendOrderDeliveredNotification: handler.SendOrderDeliveredNotification.bind(handler)
+      SendOrderDeliveredNotification: handler.SendOrderDeliveredNotification.bind(handler),
+      SendPaymentConfirmedNotification: handler.SendPaymentConfirmedNotification.bind(handler),
+      SendPaymentRefundedNotification: handler.SendPaymentRefundedNotification.bind(handler)
     });
 
     server.bindAsync(

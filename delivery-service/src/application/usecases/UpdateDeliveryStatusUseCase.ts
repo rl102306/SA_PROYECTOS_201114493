@@ -5,6 +5,7 @@ export interface UpdateDeliveryStatusDTO {
   deliveryId: string;
   status: 'PICKED_UP' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
   cancellationReason?: string;
+  deliveryPhoto?: string;  // base64, requerido cuando status=DELIVERED
 }
 
 export class UpdateDeliveryStatusUseCase {
@@ -35,8 +36,11 @@ export class UpdateDeliveryStatusUseCase {
         break;
 
       case 'DELIVERED':
-        delivery.markAsDelivered();
-        console.log(`✅ Pedido entregado exitosamente`);
+        if (!dto.deliveryPhoto || dto.deliveryPhoto.trim() === '') {
+          throw new Error('Se requiere foto de entrega (base64) para marcar como ENTREGADO');
+        }
+        delivery.markAsDelivered(dto.deliveryPhoto);
+        console.log(`✅ Pedido entregado exitosamente con foto`);
         break;
 
       case 'CANCELLED':

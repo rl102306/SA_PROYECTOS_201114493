@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 import { Order, OrderStatus } from '../../../domain/entities/Order';
-import { IOrderRepository } from '../../../domain/interfaces/IOrderRepository';
+import { IOrderRepository, OrderFilters } from '../../../domain/interfaces/IOrderRepository';
 
 export class PostgresOrderRepository implements IOrderRepository {
   constructor(private readonly pool: Pool) {}
@@ -65,6 +65,41 @@ export class PostgresOrderRepository implements IOrderRepository {
 
     const result = await this.pool.query(query, values);
     return this.mapToEntity(result.rows[0]);
+  }
+
+  async findAll(filters: OrderFilters): Promise<Order[]> {
+    const conditions: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (filters.statuses && filters.statuses.length > 0) {
+      conditions.push(`status = ANY($${idx++})`);
+      values.push(filters.statuses);
+    }
+    if (filters.dateFrom) {
+      conditions.push(`created_at >= $${idx++}`);
+      values.push(filters.dateFrom);
+    }
+    if (filters.dateTo) {
+      conditions.push(`created_at <= $${idx++}`);
+      values.push(filters.dateTo);
+    }
+    if (filters.userId) {
+      conditions.push(`user_id = $${idx++}`);
+      values.push(filters.userId);
+    }
+    if (filters.restaurantId) {
+      conditions.push(`restaurant_id = $${idx++}`);
+      values.push(filters.restaurantId);
+    }
+
+    const WHERE = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const result = await this.pool.query(
+      `SELECT * FROM orders ${WHERE} ORDER BY created_at DESC`,
+      values
+    );
+
+    return result.rows.map(row => this.mapToEntity(row));
   }
 
   async delete(id: string): Promise<void> {

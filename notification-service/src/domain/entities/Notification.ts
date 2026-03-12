@@ -5,7 +5,9 @@ export enum NotificationType {
   ORDER_CANCELLED_BY_DELIVERY = 'ORDER_CANCELLED_BY_DELIVERY',
   ORDER_REJECTED = 'ORDER_REJECTED',
   ORDER_IN_TRANSIT = 'ORDER_IN_TRANSIT',
-  ORDER_DELIVERED = 'ORDER_DELIVERED'
+  ORDER_DELIVERED = 'ORDER_DELIVERED',
+  PAYMENT_CONFIRMED = 'PAYMENT_CONFIRMED',
+  PAYMENT_REFUNDED = 'PAYMENT_REFUNDED'
 }
 
 export interface NotificationProps {
@@ -21,6 +23,11 @@ export interface NotificationProps {
   restaurantName?: string;
   deliveryPersonName?: string;
   cancellationReason?: string;
+  amountGtq?: number;
+  amountUsd?: number;
+  exchangeRate?: number;
+  paymentMethod?: string;
+  currency?: string;
   status: string;
   sentAt?: Date;
   createdAt: Date;
@@ -79,6 +86,26 @@ export class Notification {
 
   get cancellationReason(): string | undefined {
     return this.props.cancellationReason;
+  }
+
+  get amountGtq(): number | undefined {
+    return this.props.amountGtq;
+  }
+
+  get amountUsd(): number | undefined {
+    return this.props.amountUsd;
+  }
+
+  get exchangeRate(): number | undefined {
+    return this.props.exchangeRate;
+  }
+
+  get paymentMethod(): string | undefined {
+    return this.props.paymentMethod;
+  }
+
+  get currency(): string | undefined {
+    return this.props.currency;
   }
 
   get status(): string {

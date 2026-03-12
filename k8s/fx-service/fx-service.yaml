@@ -1,0 +1,105 @@
+# =============================================================
+# CONFIGMAP — fx-service-config
+# =============================================================
+# Un ConfigMap almacena configuración no sensible como variables
+# de entorno. A diferencia de los Secrets, los valores NO están
+# cifrados, por lo que son para datos públicos (URLs, puertos, etc.)
+#
+# Ventaja: separar la configuración del código.
+# Si cambia el puerto de Redis, solo se modifica el ConfigMap y
+# se reinicia el Deployment, sin reconstruir la imagen Docker.
+#
+# Comando para editar un ConfigMap en caliente:
+#   kubectl edit configmap fx-service-config -n delivereats
+# =============================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fx-service-config
+  namespace: delivereats
+data:
+  GRPC_PORT: "50056"      # Puerto en el que escucha el servidor gRPC de fx-service
+  NODE_ENV: production
+  REDIS_HOST: redis       # Nombre del Service de Redis (DNS interno)
+  REDIS_PORT: "6379"      # Puerto del Service de Redis
+  # API pública y gratuita de tipos de cambio (no requiere clave)
+  EXCHANGE_RATE_API_URL: https://open.er-api.com/v6/latest
+
+---
+# =============================================================
+# DEPLOYMENT — fx-service
+# =============================================================
+# Microservicio de tipos de cambio (Foreign Exchange).
+# Convierte precios de GTQ a otras monedas (USD, EUR, MXN, etc.)
+# usando la API open.er-api.com con caché en Redis.
+#
+# RPC expuesto: ConvertCurrency(amount, from_currency, to_currency)
+#
+# Flujo:
+#   payment-service → gRPC → fx-service:50056
+#   fx-service → Redis (caché TTL 1 hora) o → open.er-api.com
+# =============================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fx-service
+  namespace: delivereats
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fx-service
+  template:
+    metadata:
+      labels:
+        app: fx-service
+    spec:
+      containers:
+        - name: fx-service
+          image: delivereats/fx-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50056
+          # envFrom carga TODAS las claves del ConfigMap como variables de entorno.
+          # Equivale a poner cada clave del ConfigMap como "env: - name: ... value: ..."
+          envFrom:
+            - configMapRef:
+                name: fx-service-config
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "150m"
+          # livenessProbe: Kubernetes verifica que el proceso sigue vivo.
+          # A diferencia de readinessProbe (¿listo para tráfico?),
+          # livenessProbe reinicia el Pod si falla (¿sigue corriendo?).
+          livenessProbe:
+            exec:
+              command: ["node", "-e", "process.exit(0)"]   # Verifica que Node.js responde
+            initialDelaySeconds: 15
+            periodSeconds: 20
+
+---
+# =============================================================
+# SERVICE — fx-service (ClusterIP)
+# =============================================================
+# Usado por: payment-service (FX_SERVICE_URL=fx-service:50056)
+#            api-gateway (FX_SERVICE_URL=fx-service:50056)
+# =============================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: fx-service
+  namespace: delivereats
+spec:
+  type: ClusterIP
+  selector:
+    app: fx-service
+  ports:
+    - port: 50056
+      targetPort: 50056

@@ -18,6 +18,7 @@ export interface DeliveryProps {
   estimatedTime?: number;
   actualDeliveryTime?: Date;
   cancellationReason?: string;
+  deliveryPhoto?: string;  // base64, requerido cuando status=DELIVERED
   createdAt: Date;
   updatedAt: Date;
 }
@@ -69,6 +70,10 @@ export class Delivery {
     return this.props.cancellationReason;
   }
 
+  get deliveryPhoto(): string | undefined {
+    return this.props.deliveryPhoto;
+  }
+
   get createdAt(): Date {
     return this.props.createdAt;
   }
@@ -107,12 +112,16 @@ export class Delivery {
     this.props.updatedAt = new Date();
   }
 
-  markAsDelivered(): void {
+  markAsDelivered(deliveryPhoto: string): void {
     if (this.props.status !== DeliveryStatus.IN_TRANSIT) {
       throw new Error('Solo se puede entregar una orden en tránsito');
     }
+    if (!deliveryPhoto || deliveryPhoto.trim() === '') {
+      throw new Error('Se requiere foto de entrega para marcar como ENTREGADO');
+    }
 
     this.props.status = DeliveryStatus.DELIVERED;
+    this.props.deliveryPhoto = deliveryPhoto;
     this.props.actualDeliveryTime = new Date();
     this.props.updatedAt = new Date();
   }
@@ -139,6 +148,7 @@ export class Delivery {
       estimatedTime: this.estimatedTime,
       actualDeliveryTime: this.actualDeliveryTime,
       cancellationReason: this.cancellationReason,
+      deliveryPhoto: this.deliveryPhoto,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt
     };

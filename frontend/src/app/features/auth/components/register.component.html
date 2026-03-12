@@ -88,6 +88,22 @@
         </div>
       </div>
 
+      <!-- Nombre del Restaurante (solo si rol = RESTAURANT) -->
+      <div class="form-group" *ngIf="isRestaurant">
+        <label for="restaurantName">Nombre del Restaurante *</label>
+        <input
+          id="restaurantName"
+          type="text"
+          formControlName="restaurantName"
+          placeholder="Ej: Pizzería Don Juan"
+          class="form-control"
+          [class.error]="registerForm.get('restaurantName')?.invalid && registerForm.get('restaurantName')?.touched"
+        />
+        <div class="error-message" *ngIf="registerForm.get('restaurantName')?.invalid && registerForm.get('restaurantName')?.touched">
+          <span>El nombre del restaurante es requerido (mín. 2 caracteres)</span>
+        </div>
+      </div>
+
       <!-- Rol -->
       <div class="form-group">
         <label for="role">Tipo de cuenta</label>
@@ -99,6 +115,7 @@
           <option value="CLIENT">Cliente</option>
           <option value="RESTAURANT">Restaurante</option>
           <option value="DELIVERY">Repartidor</option>
+          <option value="ADMIN">Administrador</option>
         </select>
       </div>
 

@@ -1,22 +1,34 @@
 import { Router, Request, Response } from 'express';
 import { authServiceClient } from '../grpc/clients/AuthServiceClient';
+import { catalogServiceClient } from '../grpc/clients/CatalogServiceClient';
 
 const router = Router();
 
 // POST /auth/register
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const { email, password, firstName, lastName, role } = req.body;
+    const { email, password, firstName, lastName, role, restaurantName } = req.body;
 
     console.log(`📝 Registro de usuario: ${email} - Rol: ${role}`);
 
     const response = await authServiceClient.register({
-      email,
-      password,
-      first_name: firstName,
-      last_name: lastName,
-      role
+      email, password,
+      first_name: firstName, last_name: lastName, role
     });
+
+    // Si el registro fue exitoso y el rol es RESTAURANT, crear el restaurante automáticamente
+    if (response.success && role === 'RESTAURANT' && response.user?.id) {
+      try {
+        await catalogServiceClient.createRestaurant({
+          id: response.user.id,
+          name: restaurantName || `${firstName} ${lastName}`,
+          email
+        });
+        console.log(`🏪 Restaurante creado automáticamente para usuario: ${response.user.id}`);
+      } catch (catalogError) {
+        console.error('⚠️ Error al crear restaurante (no crítico):', catalogError);
+      }
+    }
 
     res.json({
       success: response.success,

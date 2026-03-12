@@ -56,6 +56,46 @@ services:
       timeout: 5s
       retries: 5
 
+  delivery-db:
+    image: postgres:15-alpine
+    container_name: delivereats-delivery-db
+    environment:
+      POSTGRES_DB: delivery_db
+      POSTGRES_USER: delivery_user
+      POSTGRES_PASSWORD: delivery_password
+    ports:
+      - "5435:5432"
+    volumes:
+      - delivery-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U delivery_user -d delivery_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  payment-db:
+    image: postgres:15-alpine
+    container_name: delivereats-payment-db
+    environment:
+      POSTGRES_DB: payment_db
+      POSTGRES_USER: payment_user
+      POSTGRES_PASSWORD: payment_password
+    ports:
+      - "5436:5432"
+    volumes:
+      - payment-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payment_user -d payment_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: delivereats-redis
+    ports:
+      - "6379:6379"
+
 volumes:
   auth-db-data:
     name: delivereats-auth-db-data
@@ -63,3 +103,7 @@ volumes:
     name: delivereats-catalog-db-data
   order-db-data:
     name: delivereats-order-db-data
+  delivery-db-data:
+    name: delivereats-delivery-db-data
+  payment-db-data:
+    name: delivereats-payment-db-data

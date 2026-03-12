@@ -54,10 +54,34 @@ export class OrderServiceClient {
   async getUserOrders(userId: string): Promise<any> {
     return new Promise((resolve, reject) => {
       this.client.GetUserOrders({ user_id: userId }, (error: any, response: any) => {
-        if (error) {
-          reject(error);
-          return;
+        if (error) { reject(error); return; }
+        resolve(response);
+      });
+    });
+  }
+
+  async getAllOrders(filters: { statuses?: string[]; dateFrom?: string; dateTo?: string; userId?: string; restaurantId?: string }): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client.GetAllOrders(
+        {
+          statuses: filters.statuses || [],
+          date_from: filters.dateFrom || '',
+          date_to: filters.dateTo || '',
+          user_id: filters.userId || '',
+          restaurant_id: filters.restaurantId || ''
+        },
+        (error: any, response: any) => {
+          if (error) { reject(error); return; }
+          resolve(response);
         }
+      );
+    });
+  }
+
+  async updateOrderStatus(orderId: string, status: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.client.UpdateOrderStatus({ order_id: orderId, status }, (error: any, response: any) => {
+        if (error) { reject(error); return; }
         resolve(response);
       });
     });

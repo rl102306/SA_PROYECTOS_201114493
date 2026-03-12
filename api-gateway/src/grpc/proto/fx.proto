@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package fx;
+
+service FxService {
+  // Obtener tipo de cambio del día (con caché Redis y fallback)
+  rpc GetExchangeRate (ExchangeRateRequest) returns (ExchangeRateResponse);
+  // Obtener lista de divisas disponibles
+  rpc GetAvailableCurrencies (CurrenciesRequest) returns (CurrenciesResponse);
+}
+
+message ExchangeRateRequest {
+  string from_currency = 1;  // ej: "USD"
+  string to_currency = 2;    // ej: "GTQ"
+}
+
+message ExchangeRateResponse {
+  bool success = 1;
+  double rate = 2;
+  string source = 3;     // "API" | "CACHE" | "CACHE_FALLBACK"
+  string timestamp = 4;  // ISO 8601
+  string message = 5;
+}
+
+message CurrenciesRequest {
+  string base = 1;  // ej: "GTQ"
+}
+
+message CurrenciesResponse {
+  bool success = 1;
+  repeated string currencies = 2;
+  string message = 3;
+}

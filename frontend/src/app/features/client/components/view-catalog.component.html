@@ -1,85 +1,457 @@
-<div class="catalog-container">
+<div class="catalog-wrapper">
+
+  <!-- ===== HEADER ===== -->
   <div class="catalog-header">
-    <h1>📋 Catálogo de Productos</h1>
-    <div class="header-actions">
-      <button class="btn btn-primary" (click)="goToCreateOrder()">+ Crear Orden</button>
+    <div class="header-left">
+      <h1>Delivereats</h1>
+      <span *ngIf="step === 'products' && selectedRestaurant" class="breadcrumb">
+        <button class="btn-back" (click)="backToRestaurants()">← Restaurantes</button>
+        <span class="separator">/</span>
+        <span>{{ selectedRestaurant.name }}</span>
+      </span>
+    </div>
+    <div class="header-right">
+      <div class="cart-indicator" *ngIf="cartItemCount > 0">
+        <span class="cart-icon">🛒</span>
+        <span class="cart-badge">{{ cartItemCount }}</span>
+      </div>
+      <button class="btn btn-orders" (click)="openOrdersPanel()">Mis Pedidos</button>
+      <button class="btn btn-logout" (click)="logout()">Cerrar Sesión</button>
     </div>
   </div>
 
-  <!-- Filtro por restaurante -->
-  <div class="filter-section">
-    <label for="restaurantFilter">Filtrar por restaurante:</label>
-    <select 
-      id="restaurantFilter" 
-      [(ngModel)]="selectedRestaurantId" 
-      (change)="onRestaurantFilter()"
-      class="form-control"
-    >
-      <option value="">Todos los restaurantes</option>
-      <option *ngFor="let restaurant of restaurants" [value]="restaurant.id">
-        {{ restaurant.name }}
-      </option>
-    </select>
-  </div>
+  <!-- ===== MENSAJES ===== -->
+  <div class="alert alert-success" *ngIf="successMessage">✅ {{ successMessage }}</div>
+  <div class="alert alert-error"   *ngIf="errorMessage">❌ {{ errorMessage }}</div>
 
-  <!-- Lista de productos -->
-  <div class="products-grid">
-    <div *ngFor="let product of filteredProducts" class="product-card">
-      <div class="product-header">
-        <h3>{{ product.name }}</h3>
-        <span 
-          class="availability-badge" 
-          [class.available]="product.isAvailable"
-          [class.unavailable]="!product.isAvailable"
-        >
-          {{ product.isAvailable ? '✅ Disponible' : '❌ No disponible' }}
-        </span>
+  <!-- ===== LAYOUT PRINCIPAL ===== -->
+  <div class="main-layout">
+
+    <!-- ===== COLUMNA IZQUIERDA ===== -->
+    <div class="content-col">
+
+      <!-- PASO 1: RESTAURANTES -->
+      <div *ngIf="step === 'restaurants'">
+        <h2 class="section-title">¿De dónde quieres pedir?</h2>
+
+        <!-- ===== FILTROS ===== -->
+        <div class="filter-bar">
+
+          <!-- Fila 1: Ordenar + Promociones -->
+          <div class="filter-row">
+            <div class="filter-field">
+              <label class="filter-label">Ordenar por</label>
+              <div class="filter-select-wrap">
+                <select [(ngModel)]="filterSortBy" (change)="applyFilters()" class="filter-select">
+                  <option value="">Relevancia</option>
+                  <option value="new">Más nuevos</option>
+                  <option value="featured">Destacados</option>
+                  <option value="best_rated">Mejor puntuados</option>
+                </select>
+              </div>
+            </div>
+
+            <label class="filter-promo-toggle" [class.active]="filterHasPromotion">
+              <input type="checkbox" [(ngModel)]="filterHasPromotion" (change)="applyFilters()" hidden>
+              <span class="promo-icon">🏷️</span> Con promociones
+            </label>
+          </div>
+
+          <!-- Fila 2: Tipo de comida -->
+          <div class="filter-tags-section">
+            <label class="filter-label">Tipo de comida</label>
+
+            <!-- Tags sugeridos desde los restaurantes -->
+            <div class="suggested-tags" *ngIf="suggestedTags.length > 0">
+              <button *ngFor="let tag of suggestedTags"
+                      class="tag-pill-btn"
+                      [class.tag-pill-active]="filterTags.includes(tag)"
+                      (click)="toggleSuggestedTag(tag)">
+                {{ tag }}
+              </button>
+            </div>
+
+            <!-- Input para agregar categoría personalizada -->
+            <div class="custom-tag-row">
+              <input type="text" [(ngModel)]="filterTagInput" class="custom-tag-input"
+                     placeholder="Agregar categoría..." (keyup.enter)="addFilterTag()" />
+              <button class="btn-add-custom-tag" (click)="addFilterTag()"
+                      [disabled]="!filterTagInput.trim()">+</button>
+            </div>
+
+            <!-- Tags activos seleccionados -->
+            <div class="active-filter-tags" *ngIf="filterTags.length > 0">
+              <span class="filter-label-sm">Filtros activos:</span>
+              <span *ngFor="let tag of filterTags" class="active-tag">
+                {{ tag }}
+                <button class="active-tag-remove" (click)="removeFilterTag(tag)">×</button>
+              </span>
+            </div>
+          </div>
+
+        </div>
+
+        <div *ngIf="isLoadingRestaurants" class="loading-state"><p>Cargando restaurantes...</p></div>
+
+        <div *ngIf="!isLoadingRestaurants && restaurants.length === 0 && !errorMessage" class="empty-state">
+          <p>No hay restaurantes disponibles.</p>
+        </div>
+
+        <div class="restaurants-grid" *ngIf="!isLoadingRestaurants && restaurants.length > 0">
+          <div *ngFor="let restaurant of restaurants; let i = index"
+               class="restaurant-card" (click)="selectRestaurant(restaurant)">
+            <div class="restaurant-logo" [style.background]="getPlaceholderColor(i)">
+              <span class="restaurant-initials">{{ getInitials(restaurant.name) }}</span>
+            </div>
+            <div class="restaurant-info">
+              <h3>{{ restaurant.name }}</h3>
+              <p class="restaurant-address" *ngIf="restaurant.address">{{ restaurant.address }}</p>
+              <p class="restaurant-desc"    *ngIf="restaurant.description">{{ restaurant.description }}</p>
+              <div class="restaurant-tags" *ngIf="restaurant.tags && restaurant.tags.length > 0">
+                <span *ngFor="let tag of restaurant.tags" class="tag-pill">{{ tag }}</span>
+              </div>
+              <div class="restaurant-rating" *ngIf="restaurant.totalRatings && restaurant.totalRatings > 0">
+                <span *ngFor="let s of getStarsArray(restaurant.avgRating || 0)"
+                      class="star" [class.star-full]="s === 'full'">★</span>
+                <span class="rating-text">({{ restaurant.avgRating?.toFixed(1) }}, {{ restaurant.totalRatings }} reseñas)</span>
+              </div>
+            </div>
+            <div class="restaurant-arrow">→</div>
+          </div>
+        </div>
       </div>
-      
-      <p class="product-description">{{ product.description }}</p>
-      
-      <div class="product-details">
-        <span class="category-badge">{{ product.category }}</span>
-        <span class="restaurant-name">🏪 {{ getRestaurantName(product.restaurantId) }}</span>
+
+      <!-- PASO 2: PRODUCTOS -->
+      <div *ngIf="step === 'products'">
+        <h2 class="section-title">Menú de {{ selectedRestaurant?.name }}</h2>
+
+        <!-- Promociones activas -->
+        <div class="promotions-bar" *ngIf="restaurantPromotions.length > 0">
+          <div *ngFor="let promo of restaurantPromotions" class="promo-banner">
+            <span class="promo-icon">🎁</span>
+            <span class="promo-text"><strong>{{ promo.title }}</strong>: {{ promo.description }}</span>
+            <span class="promo-badge" *ngIf="promo.type === 'PERCENTAGE'">{{ promo.discount_value || promo.discountValue }}% OFF</span>
+            <span class="promo-badge" *ngIf="promo.type === 'FIXED'">Q{{ promo.discount_value || promo.discountValue }} OFF</span>
+            <span class="promo-badge free-delivery" *ngIf="promo.type === 'FREE_DELIVERY'">Envío Gratis</span>
+          </div>
+        </div>
+
+        <div *ngIf="isLoadingProducts" class="loading-state"><p>Cargando productos...</p></div>
+
+        <div *ngIf="!isLoadingProducts && products.length === 0 && !errorMessage" class="empty-state">
+          <p>Este restaurante no tiene productos disponibles.</p>
+        </div>
+
+        <div class="products-grid" *ngIf="!isLoadingProducts && products.length > 0">
+          <div *ngFor="let product of products" class="product-card" [class.unavailable-card]="!product.isAvailable">
+            <div class="product-body">
+              <div class="product-category" *ngIf="product.category">{{ product.category }}</div>
+              <h3 class="product-name">{{ product.name }}</h3>
+              <p class="product-desc" *ngIf="product.description">{{ product.description }}</p>
+              <div class="product-price">Q{{ product.price.toFixed(2) }}</div>
+            </div>
+            <div class="product-actions">
+              <span *ngIf="!product.isAvailable" class="unavailable-label">No disponible</span>
+              <div *ngIf="product.isAvailable" class="qty-controls">
+                <ng-container *ngIf="getQuantityInCart(product.id) === 0; else hasQty">
+                  <button class="btn-add" (click)="addToCart(product)">+ Agregar</button>
+                </ng-container>
+                <ng-template #hasQty>
+                  <button class="btn-qty" (click)="removeFromCart(product.id)">−</button>
+                  <span class="qty-num">{{ getQuantityInCart(product.id) }}</span>
+                  <button class="btn-qty" (click)="addToCart(product)">+</button>
+                </ng-template>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      
-      <div class="product-footer">
-        <span class="price">${{ product.price.toFixed(2) }}</span>
-        <span class="product-id">ID: {{ product.id.substring(0, 8) }}...</span>
-      </div>
+
     </div>
-  </div>
 
-  <div *ngIf="filteredProducts.length === 0" class="empty-state">
-    <p>No hay productos disponibles para este restaurante.</p>
-  </div>
+    <!-- ===== CARRITO ===== -->
+    <div class="cart-col" *ngIf="step === 'products'">
+      <div class="cart-panel">
+        <h3 class="cart-title">Tu Pedido</h3>
 
-  <!-- Tabla de IDs para copiar (útil para pruebas manuales) -->
-  <div class="ids-table">
-    <h3>📝 IDs de Productos (Para Pruebas Manuales)</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Producto</th>
-          <th>ID Completo</th>
-          <th>Precio</th>
-          <th>Disponible</th>
-          <th>Restaurante</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let product of allProducts">
-          <td><strong>{{ product.name }}</strong></td>
-          <td><code>{{ product.id }}</code></td>
-          <td>${{ product.price.toFixed(2) }}</td>
-          <td>
-            <span [class.text-success]="product.isAvailable" [class.text-danger]="!product.isAvailable">
-              {{ product.isAvailable ? 'Sí' : 'No' }}
+        <div *ngIf="cart.length === 0" class="cart-empty"><p>Agrega productos al carrito</p></div>
+
+        <div *ngIf="cart.length > 0">
+          <div class="cart-items">
+            <div *ngFor="let item of cart" class="cart-item">
+              <div class="cart-item-info">
+                <span class="cart-item-name">{{ item.name }}</span>
+                <span class="cart-item-price">Q{{ (item.price * item.quantity).toFixed(2) }}</span>
+              </div>
+              <div class="cart-item-qty">
+                <button class="btn-qty-sm" (click)="removeFromCart(item.productId)">−</button>
+                <span>{{ item.quantity }}</span>
+                <button class="btn-qty-sm" (click)="increaseCartItem(item.productId)">+</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="cart-total">
+            <span>Subtotal</span>
+            <span class="total-amount">Q{{ cartTotal.toFixed(2) }}</span>
+          </div>
+
+          <!-- Selector de divisa -->
+          <div class="currency-row">
+            <label class="currency-label">Ver total en:</label>
+            <select [(ngModel)]="selectedCurrency" (change)="onCurrencyChange()" class="currency-select">
+              <option *ngFor="let c of availableCurrencies" [value]="c">{{ c }}</option>
+            </select>
+          </div>
+          <div class="currency-converted" *ngIf="selectedCurrency !== 'GTQ'">
+            <span *ngIf="cartFxLoading" class="fx-loading">Obteniendo tasa...</span>
+            <span *ngIf="!cartFxLoading && cartFxRate">
+              ≈ <strong>{{ cartTotalConverted }} {{ selectedCurrency }}</strong>
+              <small class="fx-rate-hint">(1 GTQ = {{ cartFxRate.toFixed(4) }} {{ selectedCurrency }})</small>
             </span>
-          </td>
-          <td>{{ getRestaurantName(product.restaurantId) }}</td>
-        </tr>
-      </tbody>
-    </table>
+            <span *ngIf="!cartFxLoading && !cartFxRate" class="fx-error">Tasa no disponible</span>
+          </div>
+
+          <!-- Cupón -->
+          <div class="coupon-section">
+            <label>Cupón de descuento</label>
+            <div class="coupon-input-row">
+              <input type="text" [(ngModel)]="couponCode" class="form-control coupon-input"
+                     placeholder="Ej: DESC20" [disabled]="couponResult?.valid" />
+              <button class="btn-coupon" (click)="validateCoupon()" *ngIf="!couponResult?.valid"
+                      [disabled]="couponValidating || !couponCode.trim()">
+                {{ couponValidating ? '...' : 'Aplicar' }}
+              </button>
+              <button class="btn-coupon btn-coupon-clear" (click)="clearCoupon()" *ngIf="couponResult?.valid">
+                Quitar
+              </button>
+            </div>
+            <div class="coupon-result valid" *ngIf="couponResult?.valid">
+              ✅ {{ couponResult?.message }} — Descuento: Q{{ couponResult?.discountAmount?.toFixed(2) }}
+            </div>
+            <div class="coupon-result invalid" *ngIf="couponResult && !couponResult.valid">
+              ❌ {{ couponResult.message }}
+            </div>
+          </div>
+
+          <div class="cart-total cart-total-final" *ngIf="couponResult?.valid">
+            <span>Total con descuento</span>
+            <span class="total-amount">Q{{ cartTotalAfterCoupon.toFixed(2) }}</span>
+          </div>
+
+          <div class="delivery-address">
+            <label>Dirección de entrega</label>
+            <input type="text" [(ngModel)]="deliveryAddress"
+                   placeholder="Ej: Calle 5, Zona 10, Guatemala" class="form-control" />
+          </div>
+
+          <button class="btn btn-order" (click)="submitOrder()"
+                  [disabled]="!deliveryAddress.trim() || isSubmitting">
+            <span *ngIf="!isSubmitting">Realizar Pedido (Q{{ cartTotalAfterCoupon.toFixed(2) }})</span>
+            <span *ngIf="isSubmitting">Enviando...</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
+
+  <!-- ===== PANEL MIS PEDIDOS ===== -->
+  <div class="modal-overlay" *ngIf="showOrdersPanel" (click)="closeOrdersPanel()">
+    <div class="modal-box orders-box" (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+        <h3>Mis Pedidos</h3>
+        <button class="modal-close" (click)="closeOrdersPanel()">✕</button>
+      </div>
+
+      <div *ngIf="isLoadingOrders" class="orders-loading">Cargando pedidos...</div>
+
+      <div *ngIf="!isLoadingOrders && myOrders.length === 0" class="orders-empty">
+        <p>No tienes pedidos aún.</p>
+      </div>
+
+      <div *ngIf="!isLoadingOrders && myOrders.length > 0" class="orders-list">
+        <div *ngFor="let order of myOrders" class="order-card">
+          <div class="order-card-header">
+            <span class="order-id">#{{ order.id?.substring(0, 8) }}...</span>
+            <span class="order-status-badge" [ngClass]="orderStatusClass(order.status)">
+              {{ orderStatusLabel(order.status) }}
+            </span>
+          </div>
+
+          <div class="order-card-items">
+            <div *ngFor="let item of (order.items || [])" class="order-item-line">
+              <span>x{{ item.quantity }}</span>
+              <span class="order-item-price">Q{{ (item.price * item.quantity).toFixed(2) }}</span>
+            </div>
+          </div>
+
+          <div class="order-card-footer">
+            <div class="order-meta">
+              <span class="order-total">Total: <strong>Q{{ (order.total_amount || 0).toFixed(2) }}</strong></span>
+              <span class="order-address" *ngIf="order.delivery_address">{{ order.delivery_address }}</span>
+            </div>
+            <div class="order-card-btns">
+              <button *ngIf="canPay(order)" class="btn btn-pay-order" (click)="payExistingOrder(order)">
+                Pagar
+              </button>
+              <button *ngIf="canCancel(order)" class="btn btn-cancel-order"
+                      [disabled]="cancellingOrderId === order.id"
+                      (click)="cancelOrder(order)">
+                {{ cancellingOrderId === order.id ? '...' : 'Cancelar' }}
+              </button>
+              <button *ngIf="canRate(order)" class="btn btn-rate-order"
+                      (click)="openRatingModal(order.id, order.restaurant_id || '', '')">
+                ⭐ Calificar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== MODAL DE PAGO ===== -->
+  <div class="modal-overlay" *ngIf="showPaymentModal" (click)="closePaymentModal()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+
+      <!-- Éxito -->
+      <div *ngIf="paymentSuccess" class="payment-success">
+        <div class="success-icon">✅</div>
+        <h3>¡Pago exitoso!</h3>
+        <p>Tu pedido ha sido confirmado y está en proceso.</p>
+        <p class="order-ref">Pedido: <strong>{{ pendingOrderId }}</strong></p>
+        <button class="btn btn-primary mt-16" (click)="closePaymentModal()">Cerrar</button>
+      </div>
+
+      <!-- Formulario de pago -->
+      <ng-container *ngIf="!paymentSuccess">
+
+        <div class="modal-header">
+          <h3>Pagar Pedido</h3>
+          <button class="modal-close" (click)="closePaymentModal()">✕</button>
+        </div>
+
+        <!-- Resumen del pedido -->
+        <div class="order-summary">
+          <div class="summary-items">
+            <div *ngFor="let item of pendingOrderItems" class="summary-item">
+              <span>{{ item.name }} x{{ item.quantity }}</span>
+              <span>Q{{ (item.price * item.quantity).toFixed(2) }}</span>
+            </div>
+          </div>
+          <div class="summary-total">
+            <span>Total a pagar</span>
+            <div class="total-amounts">
+              <span class="amount-gtq">Q{{ pendingOrderTotal.toFixed(2) }}</span>
+              <span class="amount-usd" *ngIf="!fxLoading && fxRate">
+                ≈ ${{ totalInUsd }} USD
+                <small>(1 GTQ = ${{ fxRate.toFixed(4) }} USD)</small>
+              </span>
+              <span class="amount-usd loading" *ngIf="fxLoading">Cargando tasa...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selector de método de pago -->
+        <div class="payment-method-selector">
+          <button class="method-btn" [class.active]="paymentMethod === 'CREDIT_CARD'"
+                  (click)="paymentMethod = 'CREDIT_CARD'">
+            💳 Crédito
+          </button>
+          <button class="method-btn" [class.active]="paymentMethod === 'DEBIT_CARD'"
+                  (click)="paymentMethod = 'DEBIT_CARD'">
+            💳 Débito
+          </button>
+          <button class="method-btn" [class.active]="paymentMethod === 'DIGITAL_WALLET'"
+                  (click)="paymentMethod = 'DIGITAL_WALLET'">
+            👛 Billetera
+          </button>
+        </div>
+
+        <!-- Campos tarjeta -->
+        <div *ngIf="paymentMethod !== 'DIGITAL_WALLET'" class="payment-fields">
+          <div class="form-group">
+            <label>Nombre en la tarjeta</label>
+            <input type="text" [(ngModel)]="cardHolder" class="form-control"
+                   placeholder="Juan Pérez" />
+          </div>
+          <div class="form-group">
+            <label>Últimos 4 dígitos</label>
+            <input type="text" [(ngModel)]="cardLastFour" class="form-control"
+                   placeholder="1234" maxlength="4" />
+            <small class="field-hint" *ngIf="cardLastFour && !cardLastFourValid">Ingresa exactamente 4 dígitos</small>
+          </div>
+        </div>
+
+        <!-- Campos WALLET -->
+        <div *ngIf="paymentMethod === 'DIGITAL_WALLET'" class="payment-fields">
+          <div class="form-group">
+            <label>ID de Billetera</label>
+            <input type="text" [(ngModel)]="walletId" class="form-control"
+                   placeholder="wallet_abc123" />
+          </div>
+        </div>
+
+        <!-- Error de pago -->
+        <div class="alert alert-error" *ngIf="paymentError">❌ {{ paymentError }}</div>
+
+        <button class="btn btn-pay" (click)="processPayment()"
+                [disabled]="!paymentFormValid || isPaymentProcessing">
+          <span *ngIf="!isPaymentProcessing">Pagar Q{{ pendingOrderTotal.toFixed(2) }}</span>
+          <span *ngIf="isPaymentProcessing">Procesando...</span>
+        </button>
+
+      </ng-container>
+
+    </div>
+  </div>
+
+  <!-- ===== MODAL DE CALIFICACIÓN ===== -->
+  <div class="modal-overlay" *ngIf="showRatingModal" (click)="closeRatingModal()">
+    <div class="modal-box rating-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Calificar Pedido</h3>
+        <button class="modal-close" (click)="closeRatingModal()">✕</button>
+      </div>
+
+      <div *ngIf="ratingSuccess" class="rating-success">
+        <div class="success-icon">⭐</div>
+        <p>¡Gracias por tu calificación!</p>
+      </div>
+
+      <ng-container *ngIf="!ratingSuccess">
+        <div class="alert alert-error" *ngIf="ratingError" style="margin-bottom:12px">{{ ratingError }}</div>
+        <div class="rating-section">
+          <h4>Restaurante</h4>
+          <div class="stars-row">
+            <span *ngFor="let n of [1,2,3,4,5]"
+                  class="star-btn" [class.selected]="n <= ratingRestaurantStars"
+                  (click)="setRestaurantStar(n)">★</span>
+          </div>
+          <textarea [(ngModel)]="ratingRestaurantComment" class="form-control rating-comment"
+                    placeholder="Comentario opcional..."></textarea>
+        </div>
+
+        <div class="rating-section">
+          <h4>Repartidor</h4>
+          <div class="stars-row">
+            <span *ngFor="let n of [1,2,3,4,5]"
+                  class="star-btn" [class.selected]="n <= ratingDeliveryStars"
+                  (click)="setDeliveryStar(n)">★</span>
+          </div>
+          <textarea [(ngModel)]="ratingDeliveryComment" class="form-control rating-comment"
+                    placeholder="Comentario opcional..."></textarea>
+        </div>
+
+        <button class="btn btn-primary" (click)="submitRating()"
+                [disabled]="ratingRestaurantStars === 0 || ratingSubmitting">
+          {{ ratingSubmitting ? 'Enviando...' : 'Enviar Calificación' }}
+        </button>
+      </ng-container>
+    </div>
+  </div>
+
 </div>

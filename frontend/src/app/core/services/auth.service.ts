@@ -15,6 +15,7 @@ export interface RegisterRequest {
   firstName: string;
   lastName: string;
   role: 'CLIENT' | 'RESTAURANT' | 'DELIVERY' | 'ADMIN';
+  restaurantName?: string;
 }
 
 export interface AuthResponse {

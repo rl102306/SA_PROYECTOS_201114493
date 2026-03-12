@@ -1,109 +1,121 @@
-# 🍕 Delivereats - Sistema de Delivery con Microservicios
+# Delivereats — Plataforma de Delivery con Microservicios
 
 ![Architecture](https://img.shields.io/badge/Architecture-Microservices-blue)
 ![gRPC](https://img.shields.io/badge/Protocol-gRPC-green)
 ![Docker](https://img.shields.io/badge/Container-Docker-blue)
 ![TypeScript](https://img.shields.io/badge/Language-TypeScript-blue)
-![Angular](https://img.shields.io/badge/Frontend-Angular-red)
+![Angular](https://img.shields.io/badge/Frontend-Angular%2017-red)
+![Kubernetes](https://img.shields.io/badge/Orchestration-Kubernetes-blue)
 
-Plataforma completa de delivery de comida con arquitectura de microservicios, gRPC, Clean Architecture y principios SOLID.
+Sistema completo de delivery de comida construido con arquitectura de microservicios, comunicación gRPC, Clean Architecture y principios SOLID.
+
+**Universidad de San Carlos de Guatemala — Software Avanzado — 2026**
 
 ---
 
-## 🏗️ Arquitectura
+## Arquitectura General
 
 ```
-┌─────────────┐
-│  Frontend   │  Angular
-│  (Angular)  │  Puerto 4200
-└──────┬──────┘
-       │ REST
-       ▼
-┌─────────────┐
-│ API Gateway │  Express
-│   (REST)    │  Puerto 3000
-└──────┬──────┘
-       │ gRPC
-       ├────────┬────────┬──────────┬───────────┐
-       ▼        ▼        ▼          ▼           ▼
-┌──────────┐┌──────────┐┌────────┐┌─────────┐┌──────────┐
-│   Auth   ││ Catalog  ││ Order  ││Delivery ││Notification│
-│ Service  ││ Service  ││Service ││Service  ││  Service   │
-│  50052   ││  50051   ││ 50053  ││ 50054   ││   50055    │
-└────┬─────┘└────┬─────┘└────┬───┘└────┬────┘└─────┬──────┘
-     │           │           │         │            │
-     ▼           ▼           ▼         ▼            ▼
- ┌────────┐  ┌────────┐  ┌──────┐ ┌────────┐   📧 SMTP
- │auth_db │  │catalog │  │order │ │delivery│
- │  5432  │  │  _db   │  │ _db  │ │  _db   │
- └────────┘  │  5433  │  │ 5434 │ │  5435  │
-             └────────┘  └──────┘ └────────┘
+ ┌──────────────────────────────────────────────────────┐
+ │              Frontend Angular 17                     │
+ │                  Puerto 4200                         │
+ └───────────────────────┬──────────────────────────────┘
+                         │ REST / HTTP
+                         ▼
+ ┌──────────────────────────────────────────────────────┐
+ │                  API Gateway                         │
+ │              Express  — Puerto 3000                  │
+ │     (Autenticación JWT, Enrutamiento REST→gRPC)      │
+ └──┬───────┬────────┬────────┬────────┬────────┬───────┘
+    │ gRPC  │ gRPC   │ gRPC   │ gRPC   │ gRPC   │ gRPC
+    ▼       ▼        ▼        ▼        ▼        ▼
+ ┌──────┐ ┌───────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐
+ │ Auth │ │Catalog│ │Order │ │Deliv.│ │  FX  │ │Pay.  │
+ │:50052│ │:50051 │ │:50053│ │:50054│ │:50056│ │:50057│
+ └──┬───┘ └───┬───┘ └──┬───┘ └──┬───┘ └──┬───┘ └──┬───┘
+    │         │         │         │         │         │
+ auth_db  catalog_db  order_db  deliv_db  Redis  payment_db
+  :5432     :5433      :5434     :5435    :6379    :5436
+
+                         ┌──────────────┐
+                         │Notification  │
+                         │  Svc :50055  │
+                         │  (SMTP/Email)│
+                         └──────────────┘
 ```
 
 ---
 
-## 🚀 Microservicios
+## Microservicios
 
-| Servicio | Puerto | Función | Base de Datos |
-|----------|--------|---------|---------------|
-| **Auth-Service** | 50052 | Autenticación JWT, Gestión usuarios | PostgreSQL (5432) |
-| **Catalog-Service** | 50051 | Productos, Validación gRPC | PostgreSQL (5433) |
-| **Order-Service** | 50053 | Órdenes, Cliente gRPC | PostgreSQL (5434) |
-| **Delivery-Service** | 50054 | Entregas, Repartidores | PostgreSQL (5435) |
-| **Notification-Service** | 50055 | Emails, Notificaciones | SMTP |
-| **API Gateway** | 3000 | REST → gRPC, Validación JWT | - |
-| **Frontend** | 4200 | Angular UI | - |
+| Servicio | Puerto gRPC | Puerto DB | Función |
+|---|---|---|---|
+| **Auth Service** | 50052 | 5432 | Registro, login, JWT |
+| **Catalog Service** | 50051 | 5433 | Restaurantes, productos, validación de órdenes |
+| **Order Service** | 50053 | 5434 | Ciclo de vida de órdenes |
+| **Delivery Service** | 50054 | 5435 | Repartidores, foto de entrega |
+| **FX Service** | 50056 | Redis | Tipos de cambio USD/GTQ con caché 24h |
+| **Payment Service** | 50057 | 5436 | Pagos (tarjeta, billetera digital), conversión de moneda |
+| **Notification Service** | 50055 | — | Emails automáticos via SMTP |
+| **API Gateway** | — | 3000 | Punto de entrada REST, autenticación, routing |
+| **Frontend** | — | 4200 | Angular 17, roles: CLIENT, RESTAURANT, DELIVERY, ADMIN |
 
 ---
 
-## ⚡ Inicio Rápido (5 minutos)
+## Inicio Rapido (Local)
+
+### Prerequisitos
+- Docker Desktop corriendo
+- Git
+
+### Pasos
 
 ```bash
-# 1. Clonar
-git clone https://github.com/[usuario]/SA_PROYECTO_[carnet].git
-cd SA_PROYECTO_[carnet]
+# 1. Clonar repositorio
+git clone <url-del-repo>
+cd SA_PROYECTOS_201114493
 
-# 2. Configurar SMTP
+# 2. Crear .env (solo se necesita para SMTP)
 cp .env.example .env
-nano .env  # Editar con credenciales Gmail
+# Editar .env con credenciales SMTP si se quieren emails reales
 
 # 3. Levantar todo
-docker-compose up -d --build
+docker compose up -d --build
 
-# 4. Insertar datos
-./insert-products.sh
+# 4. Insertar restaurantes y productos en la BD
+docker exec delivereats-catalog-db psql -U catalog_user -d catalog_db -c "
+INSERT INTO restaurants (id, name, address, phone, email, schedule, is_active, created_at, updated_at)
+VALUES
+  ('99999999-9999-9999-9999-999999999999','Restaurante Central','Calle 1','5555-1234','c@mail.com','8am-10pm',true,NOW(),NOW()),
+  ('88888888-8888-8888-8888-888888888888','Pizzeria Italia','Avenida 2','5555-5678','p@mail.com','11am-11pm',true,NOW(),NOW()),
+  ('77777777-7777-7777-7777-777777777777','Burger House','Plaza 3','5555-9012','b@mail.com','10am-10pm',true,NOW(),NOW())
+ON CONFLICT (id) DO NOTHING;"
 
-# 5. Abrir
-http://localhost:4200
+# 5. Abrir el frontend
+# http://localhost:4200
 ```
 
----
+### URLs disponibles
 
-## 🛠️ Stack Tecnológico
-
-**Backend:** Node.js, TypeScript, gRPC, Express, PostgreSQL, Nodemailer  
-**Frontend:** Angular 17, TypeScript, RxJS, Tailwind CSS  
-**DevOps:** Docker, Docker Compose, GCP Cloud Run  
-**Arquitectura:** Clean Architecture, SOLID Principles
-
----
-
-## 📚 Documentación
-
-| Documento | Descripción |
-|-----------|-------------|
-| **[PRUEBAS-LOCALES.md](PRUEBAS-LOCALES.md)** | 🧪 Guía completa de pruebas locales |
-| **[DESPLIEGUE-GCP.md](DESPLIEGUE-GCP.md)** | ☁️ Despliegue en Google Cloud |
-| **[PROYECTO-COMPLETO.md](PROYECTO-COMPLETO.md)** | 📖 Visión general de los 6 servicios |
-| **[QUE-ES-GRPC.md](QUE-ES-GRPC.md)** | 🔌 Explicación de gRPC con ejemplos |
-| **[RUBRICA-COMPLETA.md](RUBRICA-COMPLETA.md)** | 📋 Mapeo de requisitos académicos |
-| **[GUIA-RAPIDA.md](GUIA-RAPIDA.md)** | ⚡ Referencia rápida |
+| URL | Descripcion |
+|---|---|
+| http://localhost:4200 | Frontend Angular |
+| http://localhost:3000 | API Gateway REST |
+| http://localhost:3000/health | Health check |
 
 ---
 
-## 🧪 Ejemplo de Uso
+## Usuarios por Rol
 
-### 1. Registrar usuario
+| Rol | Que puede hacer | Redirige a |
+|---|---|---|
+| `CLIENT` | Ver catalogo, crear ordenes, ver precios en Q | /client/create-order |
+| `RESTAURANT` | Ver y gestionar ordenes de su restaurante | /admin/orders |
+| `DELIVERY` | Aceptar entregas, subir foto de entrega | /delivery/dashboard |
+| `ADMIN` | Administrar todas las ordenes | /admin/orders |
+
+### Registrar usuario de prueba
+
 ```bash
 curl -X POST http://localhost:3000/auth/register \
   -H "Content-Type: application/json" \
@@ -111,152 +123,134 @@ curl -X POST http://localhost:3000/auth/register \
     "email": "cliente@test.com",
     "password": "password123",
     "firstName": "Juan",
-    "lastName": "Pérez",
+    "lastName": "Perez",
     "role": "CLIENT"
   }'
 ```
 
-### 2. Login
-```bash
-curl -X POST http://localhost:3000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"cliente@test.com","password":"password123"}'
-```
-
-### 3. Crear orden
-```bash
-curl -X POST http://localhost:3000/orders \
-  -H "Authorization: Bearer [TOKEN]" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "restaurantId": "99999999-9999-9999-9999-999999999999",
-    "items": [{"productId": "11111111-1111-1111-1111-111111111111", "quantity": 2, "price": 12.99}]
-  }'
-```
-
-📧 **Resultado:** Email de confirmación enviado automáticamente
-
 ---
 
-## 🔍 Clean Architecture
+## Endpoints Principales
 
+### Autenticacion
 ```
-src/
-├── domain/           # Entidades y contratos
-│   ├── entities/     # Order, User, Product
-│   └── interfaces/   # IOrderRepository
-│
-├── application/      # Casos de uso
-│   ├── dtos/
-│   └── usecases/     # CreateOrder, ValidateOrder
-│
-└── infrastructure/   # Implementaciones
-    ├── database/     # PostgreSQL
-    ├── grpc/         # Servidores/Clientes
-    └── di/           # Inyección de dependencias
+POST /auth/register   — Registrar usuario
+POST /auth/login      — Login, devuelve JWT
+```
+
+### Catalogo (publico)
+```
+GET  /catalog/restaurants                    — Listar restaurantes activos
+GET  /catalog/restaurants/:id/products       — Productos de un restaurante
+GET  /catalog/products/:id                   — Producto por ID
+```
+
+### Ordenes (requiere JWT)
+```
+POST /orders                    — Crear orden
+GET  /orders/:id                — Ver orden
+GET  /orders/user/:userId       — Ordenes de un usuario
+```
+
+### Pagos (requiere JWT)
+```
+POST /payments/process          — Procesar pago (CREDIT_CARD, DEBIT_CARD, DIGITAL_WALLET)
+GET  /fx/rate                   — Tipo de cambio USD/GTQ
+```
+
+### Admin (requiere JWT + rol ADMIN/RESTAURANT)
+```
+GET  /admin/orders              — Todas las ordenes
+PUT  /admin/orders/:id/status   — Actualizar estado de orden
 ```
 
 ---
 
-## 📡 Comunicación gRPC
-
-**Order-Service** valida productos con **Catalog-Service** vía gRPC:
-
-```typescript
-// Order-Service (Cliente)
-const validation = await catalogClient.validateOrder({
-  restaurantId: "...",
-  items: [...]
-});
-
-if (!validation.isValid) {
-  throw new Error("Validación fallida");
-}
-// Solo guarda si validación OK
-```
-
-```typescript
-// Catalog-Service (Servidor)
-ValidateOrder(request) {
-  // 1. ¿Producto existe?
-  // 2. ¿Pertenece al restaurante?
-  // 3. ¿Está disponible?
-  // 4. ¿Precio correcto?
-  return { isValid, errors };
-}
-```
-
----
-
-## 🎯 Principios SOLID
-
-- ✅ **S**RP: Cada caso de uso tiene una responsabilidad
-- ✅ **O**CP: Interfaces permiten extensión
-- ✅ **L**SP: Implementaciones intercambiables
-- ✅ **I**SP: Interfaces específicas
-- ✅ **D**IP: Dependencia de abstracciones
-
----
-
-## ☁️ Despliegue en GCP
+## Despliegue en Kubernetes
 
 ```bash
-# Construir y subir imágenes
-./deploy-build.sh
+cd k8s
 
-# Desplegar servicios
-gcloud run deploy auth-service \
-  --image gcr.io/PROJECT_ID/auth-service \
-  --platform managed
+# Desplegar todo
+./deploy.sh up
+
+# Ver estado
+kubectl get pods -n delivereats
+kubectl get svc -n delivereats
+
+# Eliminar todo
+./deploy.sh down
 ```
 
-Ver: [DESPLIEGUE-GCP.md](DESPLIEGUE-GCP.md)
+Los manifiestos estan en `k8s/` organizados por servicio. Cada directorio contiene Deployment, Service, ConfigMap y StatefulSet (para las bases de datos).
+
+Para produccion en GCP:
+```bash
+./deploy-build.sh   # Construye y sube imagenes a GCR
+```
 
 ---
 
-## 📊 Scripts Útiles
+## Stack Tecnologico
+
+| Capa | Tecnologia |
+|---|---|
+| Frontend | Angular 17, TypeScript, RxJS |
+| API Gateway | Node.js, Express, TypeScript |
+| Microservicios | Node.js, TypeScript, gRPC (`@grpc/grpc-js`) |
+| Bases de datos | PostgreSQL 15 |
+| Cache | Redis 7 |
+| Contenedores | Docker, Docker Compose |
+| Orquestacion | Kubernetes |
+| Nube | Google Cloud Platform (GCP) |
+| Email | Nodemailer + Gmail SMTP |
+
+---
+
+## Estructura del Repositorio
+
+```
+.
+├── api-gateway/              — Gateway REST→gRPC
+├── auth-service/             — Autenticacion y usuarios
+├── restaurant-catalog-service/ — Restaurantes y productos
+├── order-service/            — Gestion de ordenes
+├── delivery-service/         — Entregas y repartidores
+├── fx-service/               — Tipos de cambio con Redis
+├── payment-service/          — Procesamiento de pagos
+├── notification-service/     — Emails automaticos
+├── frontend/                 — Aplicacion Angular 17
+├── k8s/                      — Manifiestos de Kubernetes
+├── docker-compose.yml        — Stack completo local
+├── docker-compose.dev.yml    — Solo bases de datos (dev)
+├── deploy-build.sh           — Build y push a GCR
+├── insert-products.sh        — Datos de prueba en BD
+└── DOCUMENTACION.md          — Guia completa del proyecto
+```
+
+---
+
+## Scripts Utiles
 
 ```bash
-# Ver servicios
-docker-compose ps
+# Ver estado de todos los contenedores
+docker compose ps
 
-# Logs en tiempo real
-docker-compose logs -f order-service
+# Logs de un servicio
+docker compose logs -f order-service
 
-# Reiniciar servicio
-docker-compose restart notification-service
+# Reiniciar un servicio
+docker compose restart api-gateway
 
-# Limpiar todo
-docker-compose down -v
+# Reconstruir un servicio especifico
+docker compose build catalog-service && docker compose up -d catalog-service
+
+# Detener todo (conserva volumenes)
+docker compose down
+
+# Detener todo y borrar datos
+docker compose down -v
 ```
 
----
 
-## 🎓 Proyecto Académico
 
-**Universidad:** Universidad de San Carlos de Guatemala  
-**Curso:** Software Avanzado  
-**Fecha:** Febrero 2026
-
----
-
-## 📄 Licencia
-
-MIT License - Proyecto académico
-
----
-
-## 🌟 Características Destacadas
-
-- ✅ 6 microservicios con gRPC
-- ✅ Clean Architecture en todos los servicios
-- ✅ SOLID principles
-- ✅ Validación de órdenes antes de guardar
-- ✅ Notificaciones por email automáticas
-- ✅ Docker Compose para desarrollo
-- ✅ Despliegue en GCP Cloud Run
-- ✅ Documentación completa
-
----
-
-⭐ **Dale una estrella si te fue útil!** ⭐

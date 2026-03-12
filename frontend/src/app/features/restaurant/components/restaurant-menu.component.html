@@ -1,0 +1,415 @@
+<div class="menu-wrapper">
+
+  <!-- HEADER -->
+  <div class="menu-header">
+    <div class="header-left">
+      <h1>Panel de Restaurante</h1>
+      <p>{{ restaurantName }}</p>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-logout" (click)="logout()">Cerrar Sesión</button>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs-bar">
+    <button class="tab-btn" [class.active]="activeTab === 'menu'" (click)="setTab('menu')">
+      🍽️ Mi Menú
+      <span class="tab-badge">{{ products.length }}</span>
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'orders'" (click)="setTab('orders')">
+      📦 Pedidos Activos
+      <span class="tab-badge" [class.badge-alert]="orders.length > 0">{{ orders.length }}</span>
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'notifications'" (click)="setTab('notifications')">
+      🔔 Inbox
+      <span class="tab-badge" [class.badge-alert]="unreadCount > 0">{{ unreadCount }}</span>
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'promotions'" (click)="setTab('promotions')">
+      🎁 Promociones
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'coupons'" (click)="setTab('coupons')">
+      🏷️ Cupones
+    </button>
+  </div>
+
+  <!-- ALERTAS -->
+  <div class="alert alert-success" *ngIf="successMessage && !showModal && !showRejectModal">✅ {{ successMessage }}</div>
+  <div class="alert alert-error"   *ngIf="errorMessage   && !showModal && !showRejectModal">❌ {{ errorMessage }}</div>
+
+  <!-- ===== TAB MENÚ ===== -->
+  <div *ngIf="activeTab === 'menu'">
+    <div class="toolbar">
+      <h2>Mi Menú</h2>
+      <button class="btn btn-primary" (click)="openCreateModal()">+ Nuevo Producto</button>
+    </div>
+
+    <div *ngIf="isLoadingProducts" class="loading-state"><p>Cargando productos...</p></div>
+
+    <div *ngIf="!isLoadingProducts && products.length === 0" class="empty-state">
+      <p>No hay productos en tu menú. ¡Agrega el primero!</p>
+    </div>
+
+    <div class="table-container" *ngIf="!isLoadingProducts && products.length > 0">
+      <table class="products-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Descripción</th>
+            <th>Precio</th>
+            <th>Categoría</th>
+            <th>Disponible</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let product of products">
+            <td class="product-name">{{ product.name }}</td>
+            <td class="product-desc">{{ product.description || '—' }}</td>
+            <td><strong>Q{{ product.price?.toFixed(2) }}</strong></td>
+            <td>
+              <span class="category-badge" *ngIf="product.category">{{ product.category }}</span>
+              <span *ngIf="!product.category">—</span>
+            </td>
+            <td>
+              <label class="toggle-switch">
+                <input type="checkbox" [checked]="product.isAvailable" (change)="toggleAvailability(product)" />
+                <span class="toggle-slider"></span>
+              </label>
+            </td>
+            <td class="actions-cell">
+              <button class="btn btn-edit btn-sm" (click)="openEditModal(product)">Editar</button>
+              <button class="btn btn-delete btn-sm" (click)="deleteProduct(product)">Eliminar</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== TAB PEDIDOS ===== -->
+  <div *ngIf="activeTab === 'orders'">
+    <div class="toolbar">
+      <h2>Pedidos Activos</h2>
+      <button class="btn btn-secondary" (click)="loadOrders()">🔄 Actualizar</button>
+    </div>
+
+    <div *ngIf="isLoadingOrders" class="loading-state"><p>Cargando pedidos...</p></div>
+
+    <div *ngIf="!isLoadingOrders && orders.length === 0" class="empty-state">
+      <p>No hay pedidos activos en este momento.</p>
+    </div>
+
+    <div class="orders-grid" *ngIf="!isLoadingOrders && orders.length > 0">
+      <div *ngFor="let order of orders" class="order-card-restaurant">
+
+        <div class="order-card-top">
+          <span class="order-id-label">#{{ order.id?.substring(0, 8) }}...</span>
+          <span class="order-status-badge" [ngClass]="orderStatusClass(order.status)">
+            {{ orderStatusLabel(order.status) }}
+          </span>
+        </div>
+
+        <div class="order-items-list">
+          <div *ngFor="let item of (order.items || [])" class="order-item-row">
+            <span>x{{ item.quantity }}</span>
+            <span class="item-price">Q{{ (item.price * item.quantity).toFixed(2) }}</span>
+          </div>
+        </div>
+
+        <div class="order-meta">
+          <span class="order-total">Total: <strong>Q{{ (order.total_amount || 0).toFixed(2) }}</strong></span>
+          <span class="order-addr" *ngIf="order.delivery_address">📍 {{ order.delivery_address }}</span>
+        </div>
+
+        <!-- Botones de acción según estado -->
+        <div class="order-actions">
+          <!-- PAID: orden pagada, esperando que el restaurante la acepte -->
+          <ng-container *ngIf="order.status === 'PAID'">
+            <button class="btn btn-accept" (click)="acceptOrder(order)">✅ Aceptar</button>
+            <button class="btn btn-reject" (click)="openRejectModal(order)">❌ Rechazar</button>
+          </ng-container>
+
+          <!-- CONFIRMED: Iniciar preparación o Rechazar -->
+          <ng-container *ngIf="order.status === 'CONFIRMED'">
+            <button class="btn btn-prepare" (click)="startPreparing(order)">👨‍🍳 En preparación</button>
+            <button class="btn btn-reject" (click)="openRejectModal(order)">❌ Rechazar</button>
+          </ng-container>
+
+          <!-- PREPARING: listo para que lo recoja el repartidor -->
+          <ng-container *ngIf="order.status === 'PREPARING'">
+            <button class="btn btn-finish" (click)="finishOrder(order)">🛵 Listo para entrega</button>
+          </ng-container>
+
+          <!-- IN_DELIVERY: ya está con el repartidor, solo se muestra el estado -->
+          <ng-container *ngIf="order.status === 'IN_DELIVERY'">
+            <span class="status-info">🛵 En camino con el repartidor</span>
+          </ng-container>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL CREAR / EDITAR PRODUCTO ===== -->
+  <div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editingProduct ? 'Editar Producto' : 'Nuevo Producto' }}</h3>
+        <button class="modal-close" (click)="closeModal()">✕</button>
+      </div>
+
+      <div class="alert alert-error" *ngIf="errorMessage && showModal">❌ {{ errorMessage }}</div>
+
+      <form [formGroup]="productForm" (ngSubmit)="saveProduct()">
+        <div class="form-group">
+          <label>Nombre *</label>
+          <input type="text" formControlName="name" class="form-control" placeholder="Ej: Pizza Margarita" />
+        </div>
+        <div class="form-group">
+          <label>Descripción</label>
+          <textarea formControlName="description" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Precio (Q) *</label>
+            <input type="number" formControlName="price" class="form-control" step="0.01" min="0.01" />
+          </div>
+          <div class="form-group">
+            <label>Categoría</label>
+            <input type="text" formControlName="category" class="form-control" placeholder="Ej: Pizza" />
+          </div>
+        </div>
+        <div class="form-group checkbox-group">
+          <label>
+            <input type="checkbox" formControlName="isAvailable" />
+            Disponible para pedidos
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="productForm.invalid || isSaving">
+            {{ isSaving ? 'Guardando...' : (editingProduct ? 'Actualizar' : 'Crear Producto') }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== MODAL RECHAZAR PEDIDO ===== -->
+  <div class="modal-overlay" *ngIf="showRejectModal" (click)="closeRejectModal()">
+    <div class="modal-content modal-reject" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Rechazar Pedido</h3>
+        <button class="modal-close" (click)="closeRejectModal()">✕</button>
+      </div>
+      <p class="reject-subtitle">Pedido #{{ rejectingOrder?.id?.substring(0, 8) }}...</p>
+      <div class="form-group">
+        <label>Motivo del rechazo (opcional)</label>
+        <textarea [(ngModel)]="rejectReason" class="form-control" rows="3"
+                  placeholder="Ej: No hay ingredientes disponibles, restaurante cerrado..."></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" (click)="closeRejectModal()">Cancelar</button>
+        <button class="btn btn-reject" (click)="confirmReject()">Confirmar Rechazo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB NOTIFICACIONES (Inbox RabbitMQ) ===== -->
+  <div *ngIf="activeTab === 'notifications'">
+    <div class="toolbar">
+      <h2>Bandeja de Entrada</h2>
+      <button class="btn btn-secondary" *ngIf="unreadCount > 0" (click)="markAllRead()">Marcar todas como leídas</button>
+    </div>
+    <div *ngIf="isLoadingNotifications" class="loading-state"><p>Cargando notificaciones...</p></div>
+    <div *ngIf="!isLoadingNotifications && notifications.length === 0" class="empty-state">
+      <p>No hay notificaciones de nuevos pedidos.</p>
+    </div>
+    <div class="notifications-list" *ngIf="!isLoadingNotifications && notifications.length > 0">
+      <div *ngFor="let n of notifications" class="notification-card" [class.unread]="!n.isRead">
+        <div class="notif-header">
+          <span class="notif-order">📦 Pedido #{{ n.orderId?.substring(0,8) }}...</span>
+          <span class="notif-date">{{ n.createdAt | date:'dd/MM HH:mm' }}</span>
+          <span class="badge-new" *ngIf="!n.isRead">NUEVO</span>
+        </div>
+        <div class="notif-body">
+          <span>Total: <strong>Q{{ n.totalAmount?.toFixed(2) }}</strong></span>
+          <span *ngIf="n.deliveryAddress"> — {{ n.deliveryAddress }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB PROMOCIONES ===== -->
+  <div *ngIf="activeTab === 'promotions'">
+    <div class="toolbar">
+      <h2>Promociones</h2>
+      <button class="btn btn-primary" (click)="openPromoModal()">+ Nueva Promoción</button>
+    </div>
+    <div *ngIf="isLoadingPromotions" class="loading-state"><p>Cargando...</p></div>
+    <div *ngIf="!isLoadingPromotions && promotions.length === 0" class="empty-state">
+      <p>No tienes promociones. ¡Crea la primera para atraer clientes!</p>
+    </div>
+    <div class="table-container" *ngIf="!isLoadingPromotions && promotions.length > 0">
+      <table class="products-table">
+        <thead><tr>
+          <th>Título</th><th>Tipo</th><th>Descuento</th><th>Vigencia</th><th>Estado</th><th>Acciones</th>
+        </tr></thead>
+        <tbody>
+          <tr *ngFor="let p of promotions">
+            <td>{{ p.title }}</td>
+            <td>{{ p.type }}</td>
+            <td>{{ p.discount_value }}{{ p.type === 'PERCENTAGE' ? '%' : ' Q' }}</td>
+            <td>{{ p.starts_at | date:'dd/MM' }} - {{ p.ends_at | date:'dd/MM/yy' }}</td>
+            <td><span [class]="p.is_active ? 'badge-active' : 'badge-inactive'">{{ p.is_active ? 'Activa' : 'Inactiva' }}</span></td>
+            <td>
+              <button class="btn btn-danger btn-sm" (click)="deletePromotion(p.id)">Eliminar</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== TAB CUPONES ===== -->
+  <div *ngIf="activeTab === 'coupons'">
+    <div class="toolbar">
+      <h2>Cupones</h2>
+      <button class="btn btn-primary" (click)="openCouponModal()">+ Nuevo Cupón</button>
+    </div>
+    <p class="info-note">Los cupones deben ser aprobados por un administrador antes de que los clientes puedan usarlos.</p>
+    <div *ngIf="isLoadingCoupons" class="loading-state"><p>Cargando...</p></div>
+    <div *ngIf="!isLoadingCoupons && coupons.length === 0" class="empty-state">
+      <p>No tienes cupones creados.</p>
+    </div>
+    <div class="table-container" *ngIf="!isLoadingCoupons && coupons.length > 0">
+      <table class="products-table">
+        <thead><tr>
+          <th>Código</th><th>Tipo</th><th>Descuento</th><th>Min. Pedido</th><th>Usos</th><th>Aprobado</th><th>Vence</th>
+        </tr></thead>
+        <tbody>
+          <tr *ngFor="let c of coupons">
+            <td><strong>{{ c.code }}</strong></td>
+            <td>{{ c.type }}</td>
+            <td>{{ c.discount_value }}{{ c.type === 'PERCENTAGE' ? '%' : ' Q' }}</td>
+            <td>Q{{ c.min_order_amount || 0 }}</td>
+            <td>{{ c.uses_count || 0 }}/{{ c.max_uses || '∞' }}</td>
+            <td>
+              <span [class]="c.is_approved ? 'badge-active' : 'badge-pending'">
+                {{ c.is_approved ? 'Aprobado' : 'Pendiente' }}
+              </span>
+            </td>
+            <td>{{ c.expires_at | date:'dd/MM/yy' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MODAL NUEVA PROMOCIÓN -->
+  <div class="modal-overlay" *ngIf="showPromoModal" (click)="closePromoModal()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Nueva Promoción</h3>
+        <button class="modal-close" (click)="closePromoModal()">✕</button>
+      </div>
+      <form [formGroup]="promoForm" class="modal-form">
+        <div class="form-group">
+          <label>Título *</label>
+          <input type="text" formControlName="title" class="form-control" placeholder="20% en todo el menú" />
+        </div>
+        <div class="form-group">
+          <label>Descripción</label>
+          <input type="text" formControlName="description" class="form-control" placeholder="Solo hoy" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tipo *</label>
+            <select formControlName="type" class="form-control">
+              <option value="PERCENTAGE">Porcentaje (%)</option>
+              <option value="FIXED">Monto fijo (Q)</option>
+              <option value="FREE_DELIVERY">Envío gratis</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Valor *</label>
+            <input type="number" formControlName="discountValue" class="form-control" min="0.01" step="0.01" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Inicia *</label>
+            <input type="datetime-local" formControlName="startsAt" class="form-control" />
+          </div>
+          <div class="form-group">
+            <label>Termina *</label>
+            <input type="datetime-local" formControlName="endsAt" class="form-control" />
+          </div>
+        </div>
+      </form>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" (click)="closePromoModal()">Cancelar</button>
+        <button class="btn btn-primary" (click)="savePromotion()" [disabled]="promoForm.invalid || isSavingPromo">
+          {{ isSavingPromo ? 'Guardando...' : 'Crear Promoción' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL NUEVO CUPÓN -->
+  <div class="modal-overlay" *ngIf="showCouponModal" (click)="closeCouponModal()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Nuevo Cupón</h3>
+        <button class="modal-close" (click)="closeCouponModal()">✕</button>
+      </div>
+      <form [formGroup]="couponForm" class="modal-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Código *</label>
+            <input type="text" formControlName="code" class="form-control" placeholder="DESC20" style="text-transform:uppercase" />
+          </div>
+          <div class="form-group">
+            <label>Tipo *</label>
+            <select formControlName="type" class="form-control">
+              <option value="PERCENTAGE">Porcentaje (%)</option>
+              <option value="FIXED">Monto fijo (Q)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Valor descuento *</label>
+            <input type="number" formControlName="discountValue" class="form-control" min="0.01" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label>Mínimo de pedido (Q)</label>
+            <input type="number" formControlName="minOrderAmount" class="form-control" min="0" step="0.01" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Máx. usos (0 = ilimitado)</label>
+            <input type="number" formControlName="maxUses" class="form-control" min="0" />
+          </div>
+          <div class="form-group">
+            <label>Expira *</label>
+            <input type="datetime-local" formControlName="expiresAt" class="form-control" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Descripción</label>
+          <input type="text" formControlName="description" class="form-control" placeholder="Cupón de descuento especial" />
+        </div>
+      </form>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" (click)="closeCouponModal()">Cancelar</button>
+        <button class="btn btn-primary" (click)="saveCoupon()" [disabled]="couponForm.invalid || isSavingCoupon">
+          {{ isSavingCoupon ? 'Guardando...' : 'Crear Cupón' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>

@@ -62,6 +62,15 @@ export class AuthServiceClient {
       });
     });
   }
+
+  async getUserById(userId: string): Promise<any> {
+    return new Promise((resolve) => {
+      this.client.GetUserById({ user_id: userId }, (error: any, response: any) => {
+        if (error) { resolve({ found: false, user: null }); return; }
+        resolve(response);
+      });
+    });
+  }
 }
 
 export const authServiceClient = new AuthServiceClient();

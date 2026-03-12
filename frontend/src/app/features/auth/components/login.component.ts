@@ -36,10 +36,17 @@ export class LoginComponent {
       next: (response) => {
         if (response.success) {
           console.log('✅ Login exitoso');
-          const user = response.user;
-          
-          // Redirigir a crear orden
-          this.router.navigate(['/client/create-order']);
+          const role = this.authService.getCurrentUser()?.role;
+
+          if (role === 'ADMIN') {
+            this.router.navigate(['/admin/orders']);
+          } else if (role === 'RESTAURANT') {
+            this.router.navigate(['/restaurant/menu']);
+          } else if (role === 'DELIVERY') {
+            this.router.navigate(['/delivery/dashboard']);
+          } else {
+            this.router.navigate(['/client/catalog']);
+          }
         } else {
           this.errorMessage = response.message || 'Error al iniciar sesión';
         }
@@ -54,6 +61,6 @@ export class LoginComponent {
   }
 
   goToRegister(): void {
-    this.router.navigate(['/auth/register']);
+    this.router.navigate(['/register']);
   }
 }
