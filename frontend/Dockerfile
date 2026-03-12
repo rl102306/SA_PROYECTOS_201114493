@@ -31,4 +31,6 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 
 # Comando para iniciar Nginx
+# Servidor WEB
+
 CMD ["nginx", "-g", "daemon off;"]
