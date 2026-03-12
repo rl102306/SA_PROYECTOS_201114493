@@ -423,6 +423,7 @@
       </div>
 
       <ng-container *ngIf="!ratingSuccess">
+        <div class="alert alert-error" *ngIf="ratingError" style="margin-bottom:12px">{{ ratingError }}</div>
         <div class="rating-section">
           <h4>Restaurante</h4>
           <div class="stars-row">

@@ -1263,3 +1263,101 @@ Time:   ~2.5s
 ---
 
 *Practica 6 — Software Avanzado 2026 — Carnet 201114493*
+
+---
+
+## 8. Correcciones y Fixes (Sesion de Pruebas)
+
+### 8.1 Fix: Token JWT en PromotionService
+
+**Problema:** Al crear promociones o cupones desde el panel de restaurante, el backend retornaba `❌ Token no proporcionado`.
+
+**Causa:** `PromotionService` no incluia el token JWT en los headers de las peticiones HTTP.
+
+**Solucion:** Se agrego `AuthService` al constructor y un metodo `getHeaders()` que inyecta el Bearer token en todas las llamadas autenticadas.
+
+Archivo: `frontend/src/app/features/restaurant/services/promotion.service.ts`
+
+```typescript
+private getHeaders(): HttpHeaders {
+  return new HttpHeaders({
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${this.authService.getToken()}`
+  });
+}
+```
+
+Metodos actualizados para incluir headers: `createPromotion`, `getPromotions`, `deletePromotion`, `createCoupon`, `getCoupons`, `getNotifications`, `markNotificationsRead`.
+
+---
+
+### 8.2 Fix: Token JWT en RatingService
+
+**Problema:** El envio de calificaciones fallaba silenciosamente (el boton no hacia nada).
+
+**Causa:** `RatingService` no enviaba el token JWT al endpoint `POST /ratings`.
+
+**Solucion:** Se agrego `AuthService` al constructor y `getHeaders()` igual que en PromotionService.
+
+Archivo: `frontend/src/app/features/client/services/rating.service.ts`
+
+---
+
+### 8.3 Fix: CSS faltante en modal de calificacion
+
+**Problema:** Las estrellas del modal de calificacion se veian grises y no daban feedback visual al hacer click. El boton "Enviar Calificacion" permanecia deshabilitado porque `ratingRestaurantStars` nunca cambiaba visualmente (aunque el click si funcionaba).
+
+**Causa:** Las clases CSS `star-btn`, `stars-row`, `rating-section`, `rating-box`, `rating-success` no estaban definidas en `view-catalog.component.css`.
+
+**Solucion:** Se agregaron los estilos al final del archivo CSS:
+
+```css
+.star-btn {
+  font-size: 32px;
+  cursor: pointer;
+  color: #ccc;
+  transition: color 0.15s, transform 0.1s;
+  user-select: none;
+}
+
+.star-btn:hover,
+.star-btn.selected {
+  color: #f6c90e;
+  transform: scale(1.15);
+}
+```
+
+Archivo: `frontend/src/app/features/client/components/view-catalog.component.css`
+
+---
+
+### 8.4 Fix: Fondo gris en modales de Promociones y Cupones
+
+**Problema:** Los formularios de crear promocion y crear cupon se veian con fondo gris en lugar de blanco.
+
+**Causa:** Los modales usaban la clase `.modal-box` que no estaba definida en el CSS del componente. Solo existia `.modal-content` con `background: white`.
+
+**Solucion:** Se agrego la clase `.modal-box` con `background: white` y estilos equivalentes a `.modal-content`.
+
+Archivo: `frontend/src/app/features/restaurant/components/restaurant-menu.component.css`
+
+---
+
+### 8.5 Fix: column "restaurant_id" does not exist al registrarse
+
+**Problema:** Al reiniciar Minikube, la BD de auth se crea sin la columna `restaurant_id` ya que el schema base no la incluye.
+
+**Causa:** La columna fue agregada manualmente en sesiones anteriores con `ALTER TABLE`, no esta en el script de inicializacion de la BD.
+
+**Solucion temporal (cada reinicio de Minikube):**
+
+```bash
+kubectl exec -it -n delivereats auth-db-0 -- psql -U auth_user -d auth_db -c \
+  "ALTER TABLE users ADD COLUMN IF NOT EXISTS restaurant_id UUID;"
+```
+
+**Solucion permanente recomendada:** Agregar la columna directamente en el script SQL de inicializacion del auth-service para que se cree automaticamente.
+
+---
+
+*Practica 6 — Software Avanzado 2026 — Carnet 201114493*

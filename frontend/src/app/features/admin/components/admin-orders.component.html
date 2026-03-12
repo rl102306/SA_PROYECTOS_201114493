@@ -9,6 +9,7 @@
   </div>
 
   <!-- Tabs -->
+  <div class="tab-panel-wrapper">
   <div class="tabs-bar" *ngIf="currentUserRole !== 'RESTAURANT'">
     <button class="tab-btn" [class.active]="activeTab === 'orders'" (click)="setTab('orders')">
       📦 Pedidos

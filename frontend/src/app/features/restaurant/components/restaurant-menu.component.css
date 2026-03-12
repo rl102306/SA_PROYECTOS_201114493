@@ -341,3 +341,27 @@ textarea.form-control { resize: vertical; min-height: 60px; }
   .form-row { grid-template-columns: 1fr; }
   .orders-grid { grid-template-columns: 1fr; padding: 12px; }
 }
+
+/* ===== MODAL-BOX (promociones y cupones) ===== */
+.modal-box {
+  background: white;
+  border-radius: 14px;
+  padding: 24px;
+  width: 520px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.modal-form .form-group {
+  margin-bottom: 14px;
+}
+
+.modal-form label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+  margin-bottom: 4px;
+}

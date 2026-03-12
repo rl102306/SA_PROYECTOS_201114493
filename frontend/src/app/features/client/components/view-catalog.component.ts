@@ -92,6 +92,7 @@ export class ViewCatalogComponent implements OnInit {
   ratingDeliveryComment = '';
   ratingSubmitting = false;
   ratingSuccess = false;
+  ratingError = '';
   // ────────────────────────────────────────────────
 
   private placeholderColors = ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140'];
@@ -400,6 +401,7 @@ export class ViewCatalogComponent implements OnInit {
   submitRating(): void {
     if (this.ratingRestaurantStars === 0) return;
     this.ratingSubmitting = true;
+    this.ratingError = '';
     const reqs = [
       this.ratingService.createRating({
         orderId: this.ratingOrderId,
@@ -428,8 +430,9 @@ export class ViewCatalogComponent implements OnInit {
           setTimeout(() => this.closeRatingModal(), 1500);
         }
       },
-      error: () => {
+      error: (err: any) => {
         completed++;
+        this.ratingError = err?.error?.message || 'Error al enviar calificación. Intenta de nuevo.';
         if (completed === reqs.length) { this.ratingSubmitting = false; }
       }
     }));
