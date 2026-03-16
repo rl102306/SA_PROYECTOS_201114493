@@ -154,7 +154,9 @@ spec:
                   key: password
             # order-service consulta catalog-service para validar productos
             - name: CATALOG_SERVICE_URL
-              value: catalog-service:50051   # Service Name:Puerto del catalog-service
+              value: catalog-service:50051
+            - name: RABBITMQ_URL
+              value: amqp://delivereats:delivereats_pass@rabbitmq:5672
           resources:
             requests:
               memory: "64Mi"

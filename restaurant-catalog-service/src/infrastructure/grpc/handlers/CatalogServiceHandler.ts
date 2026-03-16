@@ -338,6 +338,20 @@ export class CatalogServiceHandler {
     }
   }
 
+  async GetDeliveryPersonRating(call: any, callback: any) {
+    try {
+      const { delivery_person_id } = call.request;
+      const summary = await this.ratingRepository.getDeliveryPersonSummary(delivery_person_id);
+      callback(null, {
+        delivery_person_id: summary.deliveryPersonId,
+        average_stars: summary.averageStars,
+        total_ratings: summary.totalRatings
+      });
+    } catch (error: any) {
+      callback(null, { delivery_person_id: call.request.delivery_person_id, average_stars: 0, total_ratings: 0 });
+    }
+  }
+
   // ===== NOTIFICATIONS =====
   async GetRestaurantNotifications(call: any, callback: any) {
     try {

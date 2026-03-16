@@ -7,6 +7,16 @@
       <p>{{ restaurantName }}</p>
     </div>
     <div class="header-right">
+      <div class="rating-badge">
+        <ng-container *ngIf="restaurantRating && restaurantRating.totalRatings > 0; else noRatings">
+          <span class="rating-stars">⭐ {{ restaurantRating.averageStars | number:'1.1-1' }}</span>
+          <span class="rating-count">({{ restaurantRating.totalRatings }} calificaciones)</span>
+        </ng-container>
+        <ng-template #noRatings>
+          <span class="rating-stars">⭐ —</span>
+          <span class="rating-count">Sin calificaciones aún</span>
+        </ng-template>
+      </div>
       <button class="btn btn-logout" (click)="logout()">Cerrar Sesión</button>
     </div>
   </div>
@@ -259,7 +269,7 @@
         <tbody>
           <tr *ngFor="let p of promotions">
             <td>{{ p.title }}</td>
-            <td>{{ p.type }}</td>
+            <td>{{ p.type === 'PERCENTAGE' ? 'Porcentaje' : p.type === 'FIXED' ? 'Monto Fijo' : 'Envío Gratis' }}</td>
             <td>{{ p.discount_value }}{{ p.type === 'PERCENTAGE' ? '%' : ' Q' }}</td>
             <td>{{ p.starts_at | date:'dd/MM' }} - {{ p.ends_at | date:'dd/MM/yy' }}</td>
             <td><span [class]="p.is_active ? 'badge-active' : 'badge-inactive'">{{ p.is_active ? 'Activa' : 'Inactiva' }}</span></td>
@@ -291,7 +301,7 @@
         <tbody>
           <tr *ngFor="let c of coupons">
             <td><strong>{{ c.code }}</strong></td>
-            <td>{{ c.type }}</td>
+            <td>{{ c.type === 'PERCENTAGE' ? 'Porcentaje' : 'Monto Fijo' }}</td>
             <td>{{ c.discount_value }}{{ c.type === 'PERCENTAGE' ? '%' : ' Q' }}</td>
             <td>Q{{ c.min_order_amount || 0 }}</td>
             <td>{{ c.uses_count || 0 }}/{{ c.max_uses || '∞' }}</td>

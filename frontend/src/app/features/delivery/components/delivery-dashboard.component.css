@@ -19,6 +19,18 @@
 .delivery-header h1 { margin: 0; font-size: 1.8rem; }
 .delivery-header p { margin: 4px 0 0; opacity: 0.8; }
 
+.rating-badge {
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 20px;
+  padding: 4px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rating-stars { font-size: 1rem; font-weight: 700; color: white; }
+.rating-count { font-size: 0.78rem; color: rgba(255,255,255,0.85); }
+
 .alert-success { background: #c6f6d5; color: #276749; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; }
 .alert-error { background: #fed7d7; color: #c53030; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; }
 

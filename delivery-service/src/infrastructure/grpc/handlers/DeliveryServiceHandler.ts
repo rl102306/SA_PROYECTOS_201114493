@@ -52,9 +52,13 @@ export class DeliveryServiceHandler {
         deliveryPhoto: delivery_photo
       });
 
+      const statusLabels: Record<string, string> = {
+        PENDING: 'Pendiente', ASSIGNED: 'Asignado', PICKED_UP: 'Recogido',
+        IN_TRANSIT: 'En Tránsito', DELIVERED: 'Entregado', CANCELLED: 'Cancelado'
+      };
       callback(null, {
         success: true,
-        message: `Estado actualizado a ${status}`,
+        message: `Estado actualizado a ${statusLabels[status] || status}`,
         delivery: this.mapToGrpcDelivery(delivery)
       });
     } catch (error: any) {

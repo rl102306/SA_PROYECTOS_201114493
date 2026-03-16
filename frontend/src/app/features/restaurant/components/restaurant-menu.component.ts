@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { MenuService } from '../services/menu.service';
 import { PromotionService } from '../services/promotion.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { RatingService } from '../../client/services/rating.service';
 
 @Component({
   selector: 'app-restaurant-menu',
@@ -14,6 +15,9 @@ export class RestaurantMenuComponent implements OnInit, OnDestroy {
 
   restaurantId = '';
   restaurantName = '';
+
+  // ── Calificación del restaurante ─────────────────
+  restaurantRating: { averageStars: number; totalRatings: number } | null = null;
 
   // ── Pestañas ─────────────────────────────────────
   activeTab: 'menu' | 'orders' | 'promotions' | 'coupons' | 'notifications' = 'menu';
@@ -64,6 +68,7 @@ export class RestaurantMenuComponent implements OnInit, OnDestroy {
     private menuService: MenuService,
     private promotionService: PromotionService,
     private authService: AuthService,
+    private ratingService: RatingService,
     private fb: FormBuilder,
     private router: Router
   ) {
@@ -105,6 +110,7 @@ export class RestaurantMenuComponent implements OnInit, OnDestroy {
     this.loadProducts();
     this.loadOrders();
     this.loadNotifications();
+    this.loadRestaurantRating();
     // Refrescar pedidos y notificaciones cada 30 s
     this.ordersRefreshInterval = setInterval(() => {
       this.loadOrders();
@@ -114,6 +120,17 @@ export class RestaurantMenuComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.ordersRefreshInterval) clearInterval(this.ordersRefreshInterval);
+  }
+
+  loadRestaurantRating(): void {
+    this.ratingService.getRestaurantRating(this.restaurantId).subscribe({
+      next: (res) => {
+        if (res.success) {
+          this.restaurantRating = { averageStars: res.averageStars, totalRatings: res.totalRatings };
+        }
+      },
+      error: () => {}
+    });
   }
 
   // ── Tab helpers ──────────────────────────────────

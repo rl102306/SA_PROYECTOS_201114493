@@ -29,6 +29,7 @@ service CatalogService {
   rpc CreateRating (CreateRatingRequest) returns (RatingResponse);
   rpc GetRestaurantRating (GetRestaurantRatingRequest) returns (RestaurantRatingSummaryResponse);
   rpc GetProductRating (GetProductRatingRequest) returns (ProductRatingSummaryResponse);
+  rpc GetDeliveryPersonRating (GetDeliveryPersonRatingRequest) returns (DeliveryPersonRatingSummaryResponse);
 
   // Notifications (restaurant order inbox via RabbitMQ)
   rpc GetRestaurantNotifications (GetRestaurantNotificationsRequest) returns (GetRestaurantNotificationsResponse);
@@ -304,6 +305,16 @@ message ProductRatingSummaryResponse {
   int32 not_recommended_count = 3;
   int32 total_ratings = 4;
   double recommendation_rate = 5;
+}
+
+message GetDeliveryPersonRatingRequest {
+  string delivery_person_id = 1;
+}
+
+message DeliveryPersonRatingSummaryResponse {
+  string delivery_person_id = 1;
+  double average_stars = 2;
+  int32 total_ratings = 3;
 }
 
 // ===== NOTIFICATIONS =====

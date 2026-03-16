@@ -77,7 +77,7 @@ export class PostgresCouponRepository implements ICouponRepository {
       type: row.type as DiscountType,
       discountValue: parseFloat(row.discount_value),
       minOrderAmount: parseFloat(row.min_order_amount),
-      maxUses: row.max_uses,
+      maxUses: row.max_uses != null ? parseInt(row.max_uses) : undefined,
       usesCount: parseInt(row.uses_count),
       isApproved: row.is_approved,
       isActive: row.is_active,

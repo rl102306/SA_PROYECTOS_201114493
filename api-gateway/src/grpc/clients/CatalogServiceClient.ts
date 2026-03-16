@@ -108,6 +108,10 @@ export class CatalogServiceClient {
     return this.call('GetProductRating', { product_id: productId });
   }
 
+  getDeliveryPersonRating(deliveryPersonId: string): Promise<any> {
+    return this.call('GetDeliveryPersonRating', { delivery_person_id: deliveryPersonId });
+  }
+
   // Notifications
   getRestaurantNotifications(restaurantId: string, unreadOnly = false): Promise<any> {
     return this.call('GetRestaurantNotifications', { restaurant_id: restaurantId, unread_only: unreadOnly });
