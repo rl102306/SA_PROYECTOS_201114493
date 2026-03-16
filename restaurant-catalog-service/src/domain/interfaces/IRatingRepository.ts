@@ -14,6 +14,12 @@ export interface ProductRatingSummary {
   recommendationRate: number;
 }
 
+export interface DeliveryPersonRatingSummary {
+  deliveryPersonId: string;
+  averageStars: number;
+  totalRatings: number;
+}
+
 export interface IRatingRepository {
   save(rating: Rating): Promise<Rating>;
   findByOrderId(orderId: string): Promise<Rating[]>;
@@ -22,4 +28,5 @@ export interface IRatingRepository {
   getRestaurantSummary(restaurantId: string): Promise<RestaurantRatingSummary>;
   getProductSummary(productId: string): Promise<ProductRatingSummary>;
   getTopRatedRestaurants(limit: number): Promise<RestaurantRatingSummary[]>;
+  getDeliveryPersonSummary(deliveryPersonId: string): Promise<DeliveryPersonRatingSummary>;
 }

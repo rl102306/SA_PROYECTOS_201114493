@@ -41,4 +41,8 @@ export class RatingService {
   getProductRating(productId: string): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/product/${productId}`);
   }
+
+  getDeliveryPersonRating(deliveryPersonId: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/delivery/${deliveryPersonId}`, { headers: this.getHeaders() });
+  }
 }

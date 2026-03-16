@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { IRatingRepository, RestaurantRatingSummary, ProductRatingSummary } from '../../../domain/interfaces/IRatingRepository';
+import { IRatingRepository, RestaurantRatingSummary, ProductRatingSummary, DeliveryPersonRatingSummary } from '../../../domain/interfaces/IRatingRepository';
 import { Rating, RatingType } from '../../../domain/entities/Rating';
 
 export class PostgresRatingRepository implements IRatingRepository {
@@ -93,6 +93,28 @@ export class PostgresRatingRepository implements IRatingRepository {
       notRecommendedCount: parseInt(row.not_recommended_count),
       totalRatings: total,
       recommendationRate: total > 0 ? parseFloat((recommended / total * 100).toFixed(1)) : 0
+    };
+  }
+
+  async getDeliveryPersonSummary(deliveryPersonId: string): Promise<DeliveryPersonRatingSummary> {
+    const result = await this.pool.query(
+      `SELECT
+        delivery_person_id,
+        COALESCE(AVG(stars), 0) as average_stars,
+        COUNT(*) as total_ratings
+       FROM ratings
+       WHERE delivery_person_id = $1 AND type = 'DELIVERY' AND stars IS NOT NULL
+       GROUP BY delivery_person_id`,
+      [deliveryPersonId]
+    );
+    if (result.rows.length === 0) {
+      return { deliveryPersonId, averageStars: 0, totalRatings: 0 };
+    }
+    const row = result.rows[0];
+    return {
+      deliveryPersonId: row.delivery_person_id,
+      averageStars: parseFloat(parseFloat(row.average_stars).toFixed(1)),
+      totalRatings: parseInt(row.total_ratings)
     };
   }
 

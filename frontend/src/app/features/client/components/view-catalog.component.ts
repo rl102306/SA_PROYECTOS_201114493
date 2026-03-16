@@ -47,6 +47,8 @@ export class ViewCatalogComponent implements OnInit {
   showPaymentModal = false;
   pendingOrderId = '';
   pendingOrderTotal = 0;
+  pendingOrderOriginalTotal = 0;
+  pendingOrderDiscount = 0;
   pendingOrderItems: CartItem[] = [];
 
   paymentMethod: 'CREDIT_CARD' | 'DEBIT_CARD' | 'DIGITAL_WALLET' = 'CREDIT_CARD';
@@ -93,6 +95,7 @@ export class ViewCatalogComponent implements OnInit {
   ratingSubmitting = false;
   ratingSuccess = false;
   ratingError = '';
+  ratedOrderIds = new Set<string>();
   // ────────────────────────────────────────────────
 
   private placeholderColors = ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140'];
@@ -268,9 +271,34 @@ export class ViewCatalogComponent implements OnInit {
     return (this.cartTotalAfterCoupon * this.cartFxRate).toFixed(2);
   }
 
+  get activePromotion(): Promotion | null {
+    if (!this.restaurantPromotions.length) return null;
+    const now = new Date();
+    return this.restaurantPromotions.find(p => {
+      const isActive = p.is_active || p.isActive;
+      const startsAt = p.starts_at ? new Date(p.starts_at) : null;
+      const endsAt = p.ends_at ? new Date(p.ends_at) : null;
+      return isActive && (!startsAt || now >= startsAt) && (!endsAt || now <= endsAt);
+    }) || null;
+  }
+
+  get promotionDiscount(): number {
+    const promo = this.activePromotion;
+    if (!promo || this.cartTotal === 0) return 0;
+    const discountValue = promo.discount_value || promo.discountValue || 0;
+    if (promo.type === 'PERCENTAGE') {
+      return parseFloat((this.cartTotal * discountValue / 100).toFixed(2));
+    }
+    if (promo.type === 'FIXED') {
+      return Math.min(discountValue, this.cartTotal);
+    }
+    return 0;
+  }
+
   get cartTotalAfterCoupon(): number {
-    const discount = this.couponResult?.valid ? this.couponResult.discountAmount : 0;
-    return Math.max(0, this.cartTotal - discount);
+    const couponDiscount = this.couponResult?.valid ? this.couponResult.discountAmount : 0;
+    const promoDiscount = this.promotionDiscount;
+    return Math.max(0, this.cartTotal - couponDiscount - promoDiscount);
   }
 
   get cartItemCount(): number {
@@ -427,6 +455,7 @@ export class ViewCatalogComponent implements OnInit {
         if (completed === reqs.length) {
           this.ratingSubmitting = false;
           this.ratingSuccess = true;
+          this.ratedOrderIds.add(this.ratingOrderId);
           setTimeout(() => this.closeRatingModal(), 1500);
         }
       },
@@ -439,7 +468,11 @@ export class ViewCatalogComponent implements OnInit {
   }
 
   canRate(order: any): boolean {
-    return order.status === 'DELIVERED';
+    return order.status === 'DELIVERED' && !this.ratedOrderIds.has(order.id);
+  }
+
+  alreadyRated(order: any): boolean {
+    return order.status === 'DELIVERED' && this.ratedOrderIds.has(order.id);
   }
 
   // ── Crear pedido ────────────────────────────────
@@ -466,6 +499,8 @@ export class ViewCatalogComponent implements OnInit {
         if (response.success) {
           // Guardar datos del pedido y abrir modal de pago
           this.pendingOrderId = response.order?.id || '';
+          this.pendingOrderOriginalTotal = this.cartTotal;
+          this.pendingOrderDiscount = parseFloat((this.cartTotal - totalSnapshot).toFixed(2));
           this.pendingOrderTotal = totalSnapshot;
           this.pendingOrderItems = itemsSnapshot;
           this.cart = [];
@@ -498,8 +533,18 @@ export class ViewCatalogComponent implements OnInit {
 
   closePaymentModal(): void {
     this.showPaymentModal = false;
+    const wasSuccess = this.paymentSuccess;
     if (this.paymentSuccess) {
       this.successMessage = `Pago completado. Pedido #${this.pendingOrderId.substring(0, 8)}... confirmado.`;
+    }
+    this.couponCode = '';
+    this.couponResult = null;
+    this.pendingOrderTotal = 0;
+    this.pendingOrderOriginalTotal = 0;
+    this.pendingOrderDiscount = 0;
+    this.pendingOrderId = '';
+    if (wasSuccess) {
+      setTimeout(() => this.openOrdersPanel(), 400);
     }
   }
 

@@ -54,6 +54,22 @@ router.get('/restaurant/:id', async (req: Request, res: Response) => {
   }
 });
 
+// GET /ratings/delivery/:id — calificación promedio de un repartidor
+router.get('/delivery/:id', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const response = await catalogServiceClient.getDeliveryPersonRating(id);
+    res.json({
+      success: true,
+      deliveryPersonId: response.delivery_person_id,
+      averageStars: response.average_stars,
+      totalRatings: response.total_ratings
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message || 'Error al obtener calificación del repartidor' });
+  }
+});
+
 // GET /ratings/product/:id — recomendaciones de un producto
 router.get('/product/:id', async (req: Request, res: Response) => {
   try {

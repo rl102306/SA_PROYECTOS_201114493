@@ -59,6 +59,7 @@ async function startServer() {
     CreateRating: handler.CreateRating.bind(handler),
     GetRestaurantRating: handler.GetRestaurantRating.bind(handler),
     GetProductRating: handler.GetProductRating.bind(handler),
+    GetDeliveryPersonRating: handler.GetDeliveryPersonRating.bind(handler),
     // Notifications
     GetRestaurantNotifications: handler.GetRestaurantNotifications.bind(handler),
     MarkNotificationsRead: handler.MarkNotificationsRead.bind(handler)

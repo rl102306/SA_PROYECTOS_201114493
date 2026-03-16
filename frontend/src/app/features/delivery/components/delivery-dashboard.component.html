@@ -5,7 +5,19 @@
       <h1>Panel del Repartidor</h1>
       <p>Gestiona tus entregas</p>
     </div>
-    <button class="btn btn-logout" (click)="logout()">Cerrar Sesión</button>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <div class="rating-badge">
+        <ng-container *ngIf="myRating && myRating.totalRatings > 0; else noRating">
+          <span class="rating-stars">⭐ {{ myRating.averageStars | number:'1.1-1' }}</span>
+          <span class="rating-count">({{ myRating.totalRatings }} calificaciones)</span>
+        </ng-container>
+        <ng-template #noRating>
+          <span class="rating-stars">⭐ —</span>
+          <span class="rating-count">Sin calificaciones aún</span>
+        </ng-template>
+      </div>
+      <button class="btn btn-logout" (click)="logout()">Cerrar Sesión</button>
+    </div>
   </div>
 
   <!-- Mensajes -->

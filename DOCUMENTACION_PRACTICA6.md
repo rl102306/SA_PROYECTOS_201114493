@@ -1360,4 +1360,313 @@ kubectl exec -it -n delivereats auth-db-0 -- psql -U auth_user -d auth_db -c \
 
 ---
 
+## 9. Guia Practica: RabbitMQ en DeliverEats
+
+### 9.1 El Problema que Resuelve
+
+Antes de RabbitMQ, cuando un cliente creaba un pedido, el `order-service` tenia que notificar directamente al `restaurant-catalog-service` para que el restaurante se enterara. Esto crea un **acoplamiento directo** entre dos servicios que no deberian conocerse:
+
+```
+SIN RabbitMQ (acoplamiento directo):
+  Cliente → API Gateway → Order Service → (llama directo a) → Catalog Service
+                                                               ↓ si este falla, el pedido falla
+```
+
+El problema concreto: si el `catalog-service` estaba caido o lento, **el pedido del cliente fallaba** aunque el `order-service` funcionara perfectamente. El error de un servicio se propagaba al usuario.
+
+Con RabbitMQ el flujo cambia:
+
+```
+CON RabbitMQ (desacoplado):
+  Cliente → API Gateway → Order Service → publica evento → RabbitMQ
+                                ↓                              ↓
+                         responde OK al cliente       Catalog Service lo lee
+                         sin esperar nada             cuando pueda
+```
+
+El `order-service` le dice al cliente "tu pedido fue creado" y se desentiende. El `catalog-service` recibe la notificacion de forma asincrona, sin que ninguno de los dos sepa que el otro existe directamente.
+
+**En terminos practicos para este proyecto:** cuando un cliente hace un pedido, el restaurante debe ver una notificacion en su panel (pestana Inbox). Esa notificacion llega via RabbitMQ, no via llamada directa.
+
+---
+
+### 9.2 Componentes Involucrados
+
+| Componente | Rol | Archivo clave |
+|---|---|---|
+| `order-service` | Publicador (Producer) | `src/infrastructure/messaging/RabbitMQPublisher.ts` |
+| RabbitMQ broker | Cola intermedia | `k8s/rabbitmq/rabbitmq.yaml` |
+| `restaurant-catalog-service` | Consumidor (Consumer) | `src/infrastructure/messaging/RabbitMQConsumer.ts` |
+| `catalog-db` | Persistencia de notificaciones | Tabla `restaurant_order_notifications` |
+| Panel restaurante — pestana Inbox | Visualizacion | `restaurant-menu.component.ts` + gRPC `GetRestaurantNotifications` |
+
+**Exchange y colas configuradas:**
+
+```
+Exchange:    delivereats.orders   (tipo: topic, durable: true)
+Routing key: order.created
+Queue:       catalog.order.notifications  (durable: true, bound al exchange)
+```
+
+---
+
+### 9.3 Que Probar y Como
+
+#### Escenario 1 — Flujo normal (happy path)
+
+1. Abrir dos ventanas del navegador (o dos perfiles distintos)
+2. En una ventana, iniciar sesion como **cliente**
+3. En la otra ventana, iniciar sesion como **restaurante** y abrir la pestana **Inbox**
+4. Desde el cliente: seleccionar ese restaurante, agregar productos al carrito, completar el pedido y pagarlo
+5. **Resultado esperado:** en el panel del restaurante aparece una nueva notificacion con badge **NUEVO**, mostrando el numero de orden, el total y la direccion de entrega
+6. Hacer clic en "Marcar todas como leidas" → el badge NUEVO desaparece pero la notificacion queda
+
+**Que confirma esto:** que el mensaje viajo desde `order-service` → RabbitMQ → `catalog-service` → `catalog-db` → frontend del restaurante.
+
+---
+
+#### Escenario 2 — Resiliencia: que pasa si RabbitMQ no esta disponible
+
+**Objetivo:** verificar que un pedido no falla aunque RabbitMQ este caido.
+
+```powershell
+# 1. Bajar RabbitMQ (simula caida del broker)
+kubectl scale deployment/rabbitmq --replicas=0 -n delivereats
+
+# 2. Desde el cliente, hacer un pedido completo
+#    El pedido debe crearse y pagarse sin error para el cliente
+
+# 3. Restaurar RabbitMQ
+kubectl scale deployment/rabbitmq --replicas=1 -n delivereats
+```
+
+**Resultado esperado:**
+- El pedido se crea normalmente desde el punto de vista del cliente
+- El restaurante NO recibe la notificacion en el Inbox (el evento se perdio porque no habia broker)
+- El sistema no cae ni lanza error al usuario
+
+Esto demuestra **tolerancia a fallos**: RabbitMQ es un componente de notificacion, no de flujo critico. Si falla, el sistema se degrada funcionalmente (sin notificaciones al restaurante) pero no operacionalmente (los pedidos siguen funcionando).
+
+**Nota:** la implementacion actual no tiene dead letter queue. Si RabbitMQ cae, los mensajes del periodo de caida se pierden. Para produccion real se implementaria un DLQ o reintento con almacenamiento local en el publisher.
+
+---
+
+#### Escenario 3 — Verificar logs del consumer
+
+```powershell
+kubectl logs deployment/catalog-service -n delivereats --follow
+```
+
+Al crear un pedido deben aparecer:
+
+```
+✅ RabbitMQ Consumer iniciado, escuchando ordenes...
+📥 Nueva orden recibida: abc12345-... para restaurante 99999999-...
+```
+
+Si RabbitMQ no esta disponible al arranque:
+
+```
+⚠️ RabbitMQ consumer no disponible (intento 1): connect ECONNREFUSED
+⚠️ RabbitMQ consumer no disponible (intento 2): connect ECONNREFUSED
+```
+
+El consumer reintenta automaticamente hasta 10 veces con 5 segundos entre intentos.
+
+---
+
+#### Escenario 4 — Interfaz de administracion de RabbitMQ
+
+```powershell
+kubectl port-forward deployment/rabbitmq 15672:15672 -n delivereats
+```
+
+Abrir: `http://localhost:15672` — usuario: `delivereats` / contrasena: `delivereats_pass`
+
+Desde ahi se puede ver la cola `catalog.order.notifications`, cuantos mensajes tiene pendientes, el exchange `delivereats.orders` y el throughput en tiempo real.
+
+---
+
+### 9.4 Que NO hace RabbitMQ en este proyecto
+
+- **No reemplaza las llamadas gRPC.** Las llamadas gRPC entre servicios (validar orden, procesar pago) siguen siendo sincronicas. RabbitMQ solo maneja la notificacion al restaurante.
+- **No es una base de datos.** Los mensajes se consumen y procesan; la persistencia esta en `catalog-db` (tabla `restaurant_order_notifications`).
+- **No garantiza orden de mensajes** si hay multiples consumidores (en este proyecto hay uno solo, no aplica).
+
+---
+
+## 10. Guia Tecnica: Como Agregar un Nuevo Test
+
+### 10.1 Estructura y Ubicacion
+
+Los tests estan en `__tests__/` dentro de cada servicio. No se conectan a ninguna base de datos ni servicio externo — todas las dependencias externas se reemplazan con mocks de Jest:
+
+```
+auth-service/
+├── __tests__/
+│   └── login.test.ts
+├── src/
+│   └── application/usecases/LoginUserUseCase.ts
+└── tsconfig.test.json
+
+order-service/
+├── __tests__/
+│   └── createOrder.test.ts
+└── src/
+    └── application/usecases/CreateOrderUseCase.ts
+
+restaurant-catalog-service/
+├── __tests__/
+│   ├── discount.test.ts
+│   └── rating.test.ts
+└── src/
+    └── domain/entities/Coupon.ts  Promotion.ts  Rating.ts
+```
+
+### 10.2 Ejecutar los Tests
+
+```bash
+cd restaurant-catalog-service && npm test
+cd ../order-service && npm test
+cd ../auth-service && npm test
+
+# Un archivo especifico con detalle
+npx jest __tests__/discount.test.ts --verbose
+
+# Con reporte de cobertura
+npm test -- --coverage
+```
+
+---
+
+### 10.3 Agregar un Test a una Suite Existente
+
+Ejemplo: agregar en `discount.test.ts` un test que verifique que un cupon expirado no aplica descuento.
+
+Abrir el archivo y localizar el `describe` correspondiente. Agregar dentro:
+
+```typescript
+test('cupon expirado rechaza con mensaje correcto', () => {
+  const coupon = new Coupon({
+    id: 'test-id',
+    restaurantId: 'rest-id',
+    code: 'EXPIRADO',
+    type: 'PERCENTAGE',
+    discountValue: 20,
+    minOrderAmount: 0,
+    maxUses: undefined,
+    usesCount: 0,
+    isApproved: true,
+    isActive: true,
+    expiresAt: new Date('2020-01-01')  // fecha en el pasado
+  });
+
+  const result = coupon.validate(100);
+
+  expect(result.valid).toBe(false);
+  expect(result.message).toMatch(/expirado/i);
+  expect(result.discountAmount).toBe(0);
+});
+```
+
+Correr para verificar:
+
+```bash
+cd restaurant-catalog-service
+npx jest __tests__/discount.test.ts --verbose
+```
+
+---
+
+### 10.4 Crear un Archivo de Test para un Nuevo Use Case
+
+Si se agrega un nuevo use case (ejemplo: `CancelOrderUseCase`), el flujo es:
+
+**1. Identificar las dependencias** — que interfaces necesita en su constructor:
+
+```typescript
+// order-service/src/application/usecases/CancelOrderUseCase.ts
+export class CancelOrderUseCase {
+  constructor(
+    private readonly orderRepo: IOrderRepository
+  ) {}
+}
+```
+
+**2. Crear el archivo de test:**
+
+```typescript
+// order-service/__tests__/cancelOrder.test.ts
+
+import { CancelOrderUseCase } from '../src/application/usecases/CancelOrderUseCase';
+import { IOrderRepository } from '../src/domain/interfaces/IOrderRepository';
+import { Order } from '../src/domain/entities/Order';
+
+// Mock tipado: Jest verifica que los metodos coincidan con la interfaz real
+const mockOrderRepo: jest.Mocked<IOrderRepository> = {
+  save:         jest.fn(),
+  findById:     jest.fn(),
+  findByUserId: jest.fn(),
+  findAll:      jest.fn(),
+  updateStatus: jest.fn()
+};
+
+let useCase: CancelOrderUseCase;
+
+beforeEach(() => {
+  jest.clearAllMocks();  // evita que contadores de llamadas persistan entre tests
+  useCase = new CancelOrderUseCase(mockOrderRepo);
+});
+
+describe('CancelOrderUseCase', () => {
+
+  test('cancela una orden en estado PENDING', async () => {
+    mockOrderRepo.findById.mockResolvedValue(
+      new Order({ id: 'order-1', status: 'PENDING', userId: 'user-1', ... })
+    );
+    mockOrderRepo.save.mockImplementation(async (o) => o);
+
+    const result = await useCase.execute({ orderId: 'order-1', userId: 'user-1' });
+
+    expect(result.status).toBe('CANCELLED');
+    expect(mockOrderRepo.save).toHaveBeenCalledTimes(1);
+  });
+
+  test('lanza error si la orden no existe', async () => {
+    mockOrderRepo.findById.mockResolvedValue(null);
+
+    await expect(
+      useCase.execute({ orderId: 'inexistente', userId: 'user-1' })
+    ).rejects.toThrow('Orden no encontrada');
+
+    expect(mockOrderRepo.save).not.toHaveBeenCalled();
+  });
+
+  test('lanza error si la orden ya fue entregada', async () => {
+    mockOrderRepo.findById.mockResolvedValue(
+      new Order({ id: 'order-1', status: 'DELIVERED', ... })
+    );
+
+    await expect(
+      useCase.execute({ orderId: 'order-1', userId: 'user-1' })
+    ).rejects.toThrow(/no se puede cancelar/i);
+  });
+
+});
+```
+
+**3. No hay nada mas que hacer** — el `testMatch` en `package.json` ya detecta cualquier `*.test.ts` dentro de `__tests__/` automaticamente.
+
+---
+
+### 10.5 Reglas para que los Tests sean Utiles
+
+- **Un test, una cosa.** Cada `test()` verifica exactamente un comportamiento. Si falla, se sabe exactamente que se rompio sin leer el cuerpo del test.
+- **Sin estado compartido entre tests.** Usar `beforeEach` para reiniciar mocks y la instancia del use case.
+- **Nombres como oraciones.** `'lanza error si la orden ya fue entregada'`, no `'test error orden'`.
+- **No mockear lo que se esta probando.** Si el test es sobre `CancelOrderUseCase`, se mockea el repositorio pero NO el use case.
+- **Casos limite obligatorios.** Por cada logica de negocio: el caso exitoso, el fallo mas comun, y un caso limite (valor 0, lista vacia, string vacio).
+
+---
+
 *Practica 6 — Software Avanzado 2026 — Carnet 201114493*

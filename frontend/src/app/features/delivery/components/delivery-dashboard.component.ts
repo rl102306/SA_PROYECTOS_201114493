@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { DeliveryService } from '../services/delivery.service';
+import { RatingService } from '../../client/services/rating.service';
 
 @Component({
   selector: 'app-delivery-dashboard',
@@ -24,6 +25,9 @@ export class DeliveryDashboardComponent implements OnInit {
   showCancelModal = false;
   deliveryIdForCancel: string | null = null;
   cancelReason: string = '';
+
+  // Calificación del repartidor
+  myRating: { averageStars: number; totalRatings: number } | null = null;
 
   readonly statusLabels: Record<string, string> = {
     PENDING: 'Pendiente',
@@ -49,11 +53,26 @@ export class DeliveryDashboardComponent implements OnInit {
   constructor(
     private deliveryService: DeliveryService,
     private authService: AuthService,
+    private ratingService: RatingService,
     private router: Router
   ) {}
 
   ngOnInit(): void {
     this.loadData();
+    this.loadMyRating();
+  }
+
+  loadMyRating(): void {
+    const user = this.authService.getCurrentUser();
+    if (!user) return;
+    this.ratingService.getDeliveryPersonRating(user.id).subscribe({
+      next: (res) => {
+        if (res.success) {
+          this.myRating = { averageStars: res.averageStars, totalRatings: res.totalRatings };
+        }
+      },
+      error: () => {}
+    });
   }
 
   loadData(): void {

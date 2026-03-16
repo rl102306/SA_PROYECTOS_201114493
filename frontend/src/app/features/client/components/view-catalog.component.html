@@ -234,7 +234,12 @@
             </div>
           </div>
 
-          <div class="cart-total cart-total-final" *ngIf="couponResult?.valid">
+          <!-- Promoción activa automática -->
+          <div class="coupon-result valid" *ngIf="activePromotion && promotionDiscount > 0">
+            🎁 Promoción: <strong>{{ activePromotion.title }}</strong> — Descuento: Q{{ promotionDiscount.toFixed(2) }}
+          </div>
+
+          <div class="cart-total cart-total-final" *ngIf="couponResult?.valid || (activePromotion && promotionDiscount > 0)">
             <span>Total con descuento</span>
             <span class="total-amount">Q{{ cartTotalAfterCoupon.toFixed(2) }}</span>
           </div>
@@ -305,6 +310,9 @@
                       (click)="openRatingModal(order.id, order.restaurant_id || '', '')">
                 ⭐ Calificar
               </button>
+              <button *ngIf="alreadyRated(order)" class="btn btn-rate-order btn-rated" disabled>
+                ✅ Ya calificado
+              </button>
             </div>
           </div>
         </div>
@@ -342,6 +350,15 @@
               <span>Q{{ (item.price * item.quantity).toFixed(2) }}</span>
             </div>
           </div>
+          <div class="summary-original" *ngIf="pendingOrderDiscount > 0">
+            <span>Subtotal</span>
+            <span class="amount-original">Q{{ pendingOrderOriginalTotal.toFixed(2) }}</span>
+          </div>
+          <div class="summary-discount-line" *ngIf="pendingOrderDiscount > 0">
+            <span>🏷️ Descuento aplicado</span>
+            <span class="amount-discount">-Q{{ pendingOrderDiscount.toFixed(2) }}</span>
+          </div>
+
           <div class="summary-total">
             <span>Total a pagar</span>
             <div class="total-amounts">

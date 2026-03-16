@@ -18,6 +18,18 @@
 .menu-header p  { margin: 2px 0 0; font-size: 13px; color: #888; }
 .header-right   { display: flex; gap: 10px; align-items: center; }
 
+.rating-badge {
+  background: #fef3c7;
+  border: 1px solid #f6c90e;
+  border-radius: 20px;
+  padding: 4px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rating-stars { font-size: 1rem; font-weight: 700; color: #92400e; }
+.rating-count { font-size: 0.78rem; color: #92400e; }
+
 /* ALERTAS */
 .alert {
   margin: 16px 24px 0;

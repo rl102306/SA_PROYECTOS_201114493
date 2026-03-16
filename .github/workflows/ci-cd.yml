@@ -1,0 +1,382 @@
+name: DeliverEats CI/CD
+
+# Se activa cuando hay un push a cualquier rama o cuando se crea un Pull Request hacia main.
+# - Push a main: ejecuta build + test + push a registry + deploy a GKE
+# - Push a otras ramas: ejecuta solo build + test (sin deploy)
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - main
+
+env:
+  GCP_REGION: us-central1
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/delivereats
+  K8S_NAMESPACE: delivereats
+
+# Permiso necesario para Workload Identity Federation
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  # ============================================================
+  # JOB 1: BUILD
+  # Construye todas las imagenes Docker de los microservicios.
+  # Corre en todas las ramas para detectar errores de build
+  # antes de que lleguen a main.
+  # ============================================================
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout codigo fuente
+        uses: actions/checkout@v4
+
+      # Calcula el tag de version basado en el SHA corto del commit.
+      # Ejemplo: si el commit es abc1234def, el tag sera "abc1234".
+      - name: Calcular tag de version
+        id: version
+        run: echo "tag=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      # Autenticacion con GCP usando Workload Identity Federation.
+      # No requiere JSON key, GCP confia directamente en GitHub Actions.
+      - name: Autenticar en Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Configurar gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configurar Docker para Artifact Registry
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Build api-gateway
+        run: |
+          docker build -t $REGISTRY/api-gateway:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/api-gateway:latest \
+                       ./api-gateway
+
+      - name: Build auth-service
+        run: |
+          docker build -t $REGISTRY/auth-service:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/auth-service:latest \
+                       ./auth-service
+
+      - name: Build catalog-service
+        run: |
+          docker build -t $REGISTRY/catalog-service:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/catalog-service:latest \
+                       ./restaurant-catalog-service
+
+      - name: Build order-service
+        run: |
+          docker build -t $REGISTRY/order-service:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/order-service:latest \
+                       ./order-service
+
+      - name: Build delivery-service
+        run: |
+          docker build -t $REGISTRY/delivery-service:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/delivery-service:latest \
+                       ./delivery-service
+
+      - name: Build fx-service
+        run: |
+          docker build -t $REGISTRY/fx-service:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/fx-service:latest \
+                       ./fx-service
+
+      - name: Build payment-service
+        run: |
+          docker build -t $REGISTRY/payment-service:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/payment-service:latest \
+                       ./payment-service
+
+      - name: Build notification-service
+        run: |
+          docker build -t $REGISTRY/notification-service:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/notification-service:latest \
+                       ./notification-service
+
+      - name: Build frontend
+        run: |
+          docker build -t $REGISTRY/frontend:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/frontend:latest \
+                       ./frontend
+
+      - name: Listar imagenes construidas
+        run: docker images | grep delivereats
+
+  # ============================================================
+  # JOB 2: TEST
+  # Ejecuta los unit tests de los servicios core.
+  # Si falla cualquier test, el pipeline se detiene aqui.
+  # ============================================================
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout codigo fuente
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            restaurant-catalog-service/package-lock.json
+            order-service/package-lock.json
+            auth-service/package-lock.json
+
+      - name: Instalar dependencias — restaurant-catalog-service
+        working-directory: ./restaurant-catalog-service
+        run: npm ci
+
+      - name: Ejecutar tests — restaurant-catalog-service
+        working-directory: ./restaurant-catalog-service
+        run: npm test -- --forceExit --passWithNoTests
+
+      - name: Instalar dependencias — order-service
+        working-directory: ./order-service
+        run: npm ci
+
+      - name: Ejecutar tests — order-service
+        working-directory: ./order-service
+        run: npm test -- --forceExit --passWithNoTests
+
+      - name: Instalar dependencias — auth-service
+        working-directory: ./auth-service
+        run: npm ci
+
+      - name: Ejecutar tests — auth-service
+        working-directory: ./auth-service
+        run: npm test -- --forceExit --passWithNoTests
+
+  # ============================================================
+  # JOB 3: PUSH
+  # Publica las imagenes en Google Artifact Registry.
+  # Solo corre en main, despues de que build Y test pasen.
+  # ============================================================
+  push:
+    name: Push Images to Artifact Registry
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout codigo fuente
+        uses: actions/checkout@v4
+
+      - name: Calcular tag de version
+        id: version
+        run: echo "tag=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Autenticar en Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Configurar gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configurar Docker para Artifact Registry
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Build y Push api-gateway
+        run: |
+          docker build -t $REGISTRY/api-gateway:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/api-gateway:latest \
+                       ./api-gateway
+          docker push $REGISTRY/api-gateway:${{ steps.version.outputs.tag }}
+          docker push $REGISTRY/api-gateway:latest
+
+      - name: Build y Push auth-service
+        run: |
+          docker build -t $REGISTRY/auth-service:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/auth-service:latest \
+                       ./auth-service
+          docker push $REGISTRY/auth-service:${{ steps.version.outputs.tag }}
+          docker push $REGISTRY/auth-service:latest
+
+      - name: Build y Push catalog-service
+        run: |
+          docker build -t $REGISTRY/catalog-service:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/catalog-service:latest \
+                       ./restaurant-catalog-service
+          docker push $REGISTRY/catalog-service:${{ steps.version.outputs.tag }}
+          docker push $REGISTRY/catalog-service:latest
+
+      - name: Build y Push order-service
+        run: |
+          docker build -t $REGISTRY/order-service:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/order-service:latest \
+                       ./order-service
+          docker push $REGISTRY/order-service:${{ steps.version.outputs.tag }}
+          docker push $REGISTRY/order-service:latest
+
+      - name: Build y Push delivery-service
+        run: |
+          docker build -t $REGISTRY/delivery-service:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/delivery-service:latest \
+                       ./delivery-service
+          docker push $REGISTRY/delivery-service:${{ steps.version.outputs.tag }}
+          docker push $REGISTRY/delivery-service:latest
+
+      - name: Build y Push fx-service
+        run: |
+          docker build -t $REGISTRY/fx-service:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/fx-service:latest \
+                       ./fx-service
+          docker push $REGISTRY/fx-service:${{ steps.version.outputs.tag }}
+          docker push $REGISTRY/fx-service:latest
+
+      - name: Build y Push payment-service
+        run: |
+          docker build -t $REGISTRY/payment-service:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/payment-service:latest \
+                       ./payment-service
+          docker push $REGISTRY/payment-service:${{ steps.version.outputs.tag }}
+          docker push $REGISTRY/payment-service:latest
+
+      - name: Build y Push notification-service
+        run: |
+          docker build -t $REGISTRY/notification-service:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/notification-service:latest \
+                       ./notification-service
+          docker push $REGISTRY/notification-service:${{ steps.version.outputs.tag }}
+          docker push $REGISTRY/notification-service:latest
+
+      - name: Build y Push frontend
+        run: |
+          docker build -t $REGISTRY/frontend:${{ steps.version.outputs.tag }} \
+                       -t $REGISTRY/frontend:latest \
+                       ./frontend
+          docker push $REGISTRY/frontend:${{ steps.version.outputs.tag }}
+          docker push $REGISTRY/frontend:latest
+
+      - name: Resumen de imagenes publicadas
+        run: |
+          echo "================================================"
+          echo " Imagenes publicadas en Artifact Registry"
+          echo " Registry: $REGISTRY"
+          echo " Version:  ${{ steps.version.outputs.tag }}"
+          echo " Branch:   ${{ github.ref_name }}"
+          echo " Commit:   ${{ github.sha }}"
+          echo "================================================"
+
+  # ============================================================
+  # JOB 4: DEPLOY
+  # Despliega los manifests de K8s al cluster de GKE.
+  # Solo corre en main, despues de que push termine exitosamente.
+  # ============================================================
+  deploy:
+    name: Deploy to GKE
+    runs-on: ubuntu-latest
+    needs: [push]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout codigo fuente
+        uses: actions/checkout@v4
+
+      - name: Calcular tag de version
+        id: version
+        run: echo "tag=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Autenticar en Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Configurar gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Instalar gke-gcloud-auth-plugin
+        run: gcloud components install gke-gcloud-auth-plugin --quiet
+
+      - name: Obtener credenciales del cluster GKE
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ secrets.GCP_CLUSTER_NAME }}
+          location: ${{ secrets.GCP_CLUSTER_ZONE }}
+
+      - name: Actualizar imagenes en manifests para GCP
+        run: |
+          TAG=${{ steps.version.outputs.tag }}
+          REGISTRY_URL="us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/delivereats"
+          find k8s -name "*.yaml" -exec sed -i \
+            "s|image: delivereats/\([^:]*\):latest|image: ${REGISTRY_URL}/\1:${TAG}|g" {} \;
+          echo "Imagenes actualizadas:"
+          grep -r "image:.*pkg.dev" k8s/ || echo "Sin cambios detectados"
+
+      - name: Aplicar namespace
+        run: kubectl apply -f k8s/namespace/
+
+      - name: Aplicar infraestructura (RabbitMQ y Redis)
+        run: |
+          kubectl apply -f k8s/rabbitmq/
+          kubectl apply -f k8s/redis/
+
+      - name: Aplicar microservicios
+        run: |
+          kubectl apply -f k8s/auth-service/
+          kubectl apply -f k8s/catalog-service/
+          kubectl apply -f k8s/order-service/
+          kubectl apply -f k8s/delivery-service/
+          kubectl apply -f k8s/fx-service/
+          kubectl apply -f k8s/payment-service/
+          kubectl apply -f k8s/notification-service/
+          kubectl apply -f k8s/api-gateway/
+          kubectl apply -f k8s/frontend/
+
+      - name: Reiniciar deployments para aplicar nuevas imagenes
+        run: |
+          kubectl rollout restart deployment/api-gateway -n $K8S_NAMESPACE
+          kubectl rollout restart deployment/auth-service -n $K8S_NAMESPACE
+          kubectl rollout restart deployment/catalog-service -n $K8S_NAMESPACE
+          kubectl rollout restart deployment/order-service -n $K8S_NAMESPACE
+          kubectl rollout restart deployment/delivery-service -n $K8S_NAMESPACE
+          kubectl rollout restart deployment/fx-service -n $K8S_NAMESPACE
+          kubectl rollout restart deployment/payment-service -n $K8S_NAMESPACE
+          kubectl rollout restart deployment/notification-service -n $K8S_NAMESPACE
+          kubectl rollout restart deployment/frontend -n $K8S_NAMESPACE
+
+      - name: Esperar a que los deployments esten listos
+        run: |
+          kubectl rollout status deployment/api-gateway -n $K8S_NAMESPACE --timeout=120s
+          kubectl rollout status deployment/auth-service -n $K8S_NAMESPACE --timeout=120s
+          kubectl rollout status deployment/catalog-service -n $K8S_NAMESPACE --timeout=120s
+          kubectl rollout status deployment/order-service -n $K8S_NAMESPACE --timeout=120s
+          kubectl rollout status deployment/delivery-service -n $K8S_NAMESPACE --timeout=120s
+          kubectl rollout status deployment/fx-service -n $K8S_NAMESPACE --timeout=120s
+          kubectl rollout status deployment/payment-service -n $K8S_NAMESPACE --timeout=120s
+          kubectl rollout status deployment/notification-service -n $K8S_NAMESPACE --timeout=120s
+          kubectl rollout status deployment/frontend -n $K8S_NAMESPACE --timeout=120s
+
+      - name: Resumen del despliegue
+        run: |
+          echo "================================================"
+          echo " DESPLIEGUE EXITOSO"
+          echo "================================================"
+          echo " Cluster:    ${{ secrets.GCP_CLUSTER_NAME }}"
+          echo " Zona:       ${{ secrets.GCP_CLUSTER_ZONE }}"
+          echo " Proyecto:   ${{ secrets.GCP_PROJECT_ID }}"
+          echo " Namespace:  $K8S_NAMESPACE"
+          echo " Version:    ${{ steps.version.outputs.tag }}"
+          echo " Commit:     ${{ github.sha }}"
+          echo " Branch:     ${{ github.ref_name }}"
+          echo " Ejecutado:  $(date -u)"
+          echo "================================================"
+          kubectl get pods -n $K8S_NAMESPACE
+          kubectl get services -n $K8S_NAMESPACE
