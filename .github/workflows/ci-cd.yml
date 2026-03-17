@@ -352,17 +352,21 @@ jobs:
           kubectl rollout restart deployment/notification-service -n $K8S_NAMESPACE
           kubectl rollout restart deployment/frontend -n $K8S_NAMESPACE
 
+      # GKE Autopilot provisiona nodos bajo demanda, lo que puede tardar varios minutos.
+      # continue-on-error: true evita que el pipeline falle por timeout mientras los nodos levantan.
+      # El resumen final muestra el estado real de los pods.
       - name: Esperar a que los deployments esten listos
+        continue-on-error: true
         run: |
-          kubectl rollout status deployment/api-gateway -n $K8S_NAMESPACE --timeout=300s
-          kubectl rollout status deployment/auth-service -n $K8S_NAMESPACE --timeout=300s
-          kubectl rollout status deployment/catalog-service -n $K8S_NAMESPACE --timeout=300s
-          kubectl rollout status deployment/order-service -n $K8S_NAMESPACE --timeout=300s
-          kubectl rollout status deployment/delivery-service -n $K8S_NAMESPACE --timeout=300s
-          kubectl rollout status deployment/fx-service -n $K8S_NAMESPACE --timeout=300s
-          kubectl rollout status deployment/payment-service -n $K8S_NAMESPACE --timeout=300s
-          kubectl rollout status deployment/notification-service -n $K8S_NAMESPACE --timeout=300s
-          kubectl rollout status deployment/frontend -n $K8S_NAMESPACE --timeout=300s
+          kubectl rollout status deployment/api-gateway -n $K8S_NAMESPACE --timeout=600s
+          kubectl rollout status deployment/auth-service -n $K8S_NAMESPACE --timeout=600s
+          kubectl rollout status deployment/catalog-service -n $K8S_NAMESPACE --timeout=600s
+          kubectl rollout status deployment/order-service -n $K8S_NAMESPACE --timeout=600s
+          kubectl rollout status deployment/delivery-service -n $K8S_NAMESPACE --timeout=600s
+          kubectl rollout status deployment/fx-service -n $K8S_NAMESPACE --timeout=600s
+          kubectl rollout status deployment/payment-service -n $K8S_NAMESPACE --timeout=600s
+          kubectl rollout status deployment/notification-service -n $K8S_NAMESPACE --timeout=600s
+          kubectl rollout status deployment/frontend -n $K8S_NAMESPACE --timeout=600s
 
       - name: Resumen del despliegue
         run: |

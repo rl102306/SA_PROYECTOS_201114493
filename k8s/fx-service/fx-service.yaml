@@ -59,7 +59,7 @@ spec:
       containers:
         - name: fx-service
           image: delivereats/fx-service:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 50056
           # envFrom carga TODAS las claves del ConfigMap como variables de entorno.

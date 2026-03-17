@@ -153,7 +153,7 @@ spec:
       containers:
         - name: payment-service
           image: delivereats/payment-service:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 50057
           # envFrom carga el ConfigMap completo como variables de entorno

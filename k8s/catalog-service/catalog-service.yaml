@@ -132,7 +132,7 @@ spec:
       containers:
         - name: catalog-service
           image: delivereats/catalog-service:latest
-          imagePullPolicy: IfNotPresent   # No intenta bajar la imagen de Docker Hub
+          imagePullPolicy: Always   # No intenta bajar la imagen de Docker Hub
           ports:
             - containerPort: 50051        # Puerto gRPC
           env:

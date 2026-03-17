@@ -128,7 +128,7 @@ spec:
       containers:
         - name: order-service
           image: delivereats/order-service:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 50053
           env:

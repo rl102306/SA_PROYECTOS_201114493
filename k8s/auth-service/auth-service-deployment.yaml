@@ -69,7 +69,7 @@ spec:
           # En Minikube con "eval $(minikube docker-env)" la imagen
           # se construye directamente en el daemon de Minikube,
           # por lo que siempre estará disponible localmente.
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 50052   # Puerto gRPC del microservicio
 

@@ -36,7 +36,7 @@ spec:
       containers:
         - name: frontend
           image: delivereats/frontend:latest
-          imagePullPolicy: IfNotPresent   # Usa la imagen construida en Minikube
+          imagePullPolicy: Always   # Usa la imagen construida en Minikube
           ports:
             - containerPort: 80   # nginx escucha en el puerto 80
           resources:

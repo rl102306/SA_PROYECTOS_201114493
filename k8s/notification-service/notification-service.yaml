@@ -73,7 +73,7 @@ spec:
       containers:
         - name: notification-service
           image: delivereats/notification-service:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 50055
           # Carga el ConfigMap completo (SMTP_HOST, SMTP_PORT, GRPC_PORT, NODE_ENV)
