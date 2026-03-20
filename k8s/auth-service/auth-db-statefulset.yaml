@@ -58,6 +58,8 @@ spec:
                 secretKeyRef:
                   name: auth-db-secret
                   key: password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
 
           # readinessProbe: Kubernetes verifica si el Pod está listo para recibir tráfico.
           # El Pod NO recibirá tráfico hasta que esta prueba sea exitosa.

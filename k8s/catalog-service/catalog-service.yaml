@@ -61,6 +61,8 @@ spec:
                 secretKeyRef:
                   name: catalog-db-secret
                   key: password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           # readinessProbe: Kubernetes marca el Pod como Ready solo cuando
           # PostgreSQL está aceptando conexiones. Los microservicios esperan
           # este estado antes de intentar conectarse.

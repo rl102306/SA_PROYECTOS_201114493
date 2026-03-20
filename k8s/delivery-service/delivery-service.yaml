@@ -57,11 +57,20 @@ spec:
                 secretKeyRef:
                   name: delivery-db-secret
                   key: password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "delivery_user", "-d", "delivery_db"]
             initialDelaySeconds: 10
             periodSeconds: 5
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "250m"
           volumeMounts:
             - name: delivery-db-data
               mountPath: /var/lib/postgresql/data
