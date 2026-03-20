@@ -68,6 +68,14 @@ spec:
             initialDelaySeconds: 10   # Espera 10s antes del primer chequeo
             periodSeconds: 5          # Repite cada 5s hasta que sea exitoso
 
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "250m"
+
           # Monta el volumen persistente en la ruta de datos de PostgreSQL
           volumeMounts:
             - name: auth-db-data

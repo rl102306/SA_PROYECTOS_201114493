@@ -60,6 +60,13 @@ spec:
               command: ["pg_isready", "-U", "payment_user", "-d", "payment_db"]
             initialDelaySeconds: 10
             periodSeconds: 5
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "250m"
           volumeMounts:
             - name: payment-db-data
               mountPath: /var/lib/postgresql/data
