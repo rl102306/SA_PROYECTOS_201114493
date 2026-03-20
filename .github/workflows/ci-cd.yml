@@ -1,12 +1,12 @@
 name: DeliverEats CI/CD
 
-# Se activa cuando hay un push a cualquier rama o cuando se crea un Pull Request hacia main.
-# - Push a main: ejecuta build + test + push a registry + deploy a GKE
-# - Push a otras ramas: ejecuta solo build + test (sin deploy)
+# Se activa cuando hay un push a main o un Pull Request hacia main.
+# - Push a main: ejecuta el ciclo completo build + test + push + deploy
+# - Pull Request a main: ejecuta build + test (sin push ni deploy)
 on:
   push:
     branches:
-      - "**"
+      - main
   pull_request:
     branches:
       - main

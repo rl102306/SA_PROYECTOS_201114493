@@ -429,33 +429,30 @@ k8s/
 Hay dos recursos Ingress en el cluster:
 
 1. **frontend-ingress** (`delivereats.local /`) → frontend-service:80
-2. **api-gateway-ingress** (`delivereats.local /api`) → api-gateway:3000
-   (el nginx del frontend ya hace proxy de /auth /catalog /orders etc.)
+2. **api-gateway-ingress** (`api.delivereats.local /`) → api-gateway:3000
 
-### Despliegue en Minikube (local)
+La IP publica del Ingress Controller en GKE es: `34.44.246.195`
 
-```powershell
-# 1. Iniciar Minikube
-minikube start --cpus=4 --memory=3800 --driver=docker
+Para acceder desde una maquina local, agregar al archivo hosts:
+```
+34.44.246.195 delivereats.local
+34.44.246.195 api.delivereats.local
+```
 
-# 2. Habilitar Ingress
-minikube addons enable ingress
+### Despliegue en GKE (produccion — automatico via CI/CD)
 
-# 3. Apuntar Docker al daemon de Minikube
-minikube docker-env | Invoke-Expression
+El despliegue a GKE se realiza automaticamente al hacer push a `main`.
+El pipeline de GitHub Actions ejecuta:
 
-# 4. Construir todas las imagenes
-docker build -t delivereats/api-gateway:latest ./api-gateway
-docker build -t delivereats/auth-service:latest ./auth-service
-docker build -t delivereats/catalog-service:latest ./restaurant-catalog-service
-docker build -t delivereats/order-service:latest ./order-service
-docker build -t delivereats/delivery-service:latest ./delivery-service
-docker build -t delivereats/fx-service:latest ./fx-service
-docker build -t delivereats/payment-service:latest ./payment-service
-docker build -t delivereats/notification-service:latest ./notification-service
-docker build -t delivereats/frontend:latest ./frontend
+```bash
+# 1. Autentica con GCP via Workload Identity Federation
+# 2. Obtiene credenciales del cluster
+gcloud container clusters get-credentials delivereats-cluster --region us-central1
 
-# 5. Aplicar manifests
+# 3. Reemplaza las imagenes locales por las del Artifact Registry
+# delivereats/<service>:latest → us-central1-docker.pkg.dev/<project>/delivereats/<service>:<sha>
+
+# 4. Aplica todos los manifests
 kubectl apply -f k8s/namespace/
 kubectl apply -f k8s/rabbitmq/
 kubectl apply -f k8s/redis/
@@ -469,10 +466,44 @@ kubectl apply -f k8s/notification-service/
 kubectl apply -f k8s/api-gateway/
 kubectl apply -f k8s/frontend/
 
-# 6. Port-forward para acceder (Admin PowerShell)
-kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 80:80
+# 5. Reinicia deployments y statefulsets para aplicar nuevas imagenes
+kubectl rollout restart deployment -n delivereats
+kubectl rollout restart statefulset -n delivereats
+```
 
-# Abrir: http://delivereats.local
+### Cluster GKE activo
+
+| Parametro | Valor |
+|---|---|
+| Proyecto | `delivereats-201114493` |
+| Cluster | `delivereats-cluster` |
+| Region | `us-central1` |
+| Namespace | `delivereats` |
+| IP publica Ingress | `34.44.246.195` |
+| Frontend URL | `http://delivereats.local` |
+| API URL | `http://api.delivereats.local` |
+
+### Estado del cluster (todos los pods Running)
+
+```
+kubectl get pods -n delivereats
+
+api-gateway          1/1 Running
+auth-db-0            1/1 Running
+auth-service         1/1 Running
+catalog-db-0         1/1 Running
+catalog-service      1/1 Running
+delivery-db-0        1/1 Running
+delivery-service     1/1 Running
+frontend             1/1 Running
+fx-service           1/1 Running
+notification-service 1/1 Running
+order-db-0           1/1 Running
+order-service        1/1 Running
+payment-db-0         1/1 Running
+payment-service      1/1 Running
+rabbitmq             1/1 Running
+redis-0              1/1 Running
 ```
 
 ### Comandos utiles
