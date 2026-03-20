@@ -352,6 +352,15 @@ jobs:
           kubectl rollout restart deployment/notification-service -n $K8S_NAMESPACE
           kubectl rollout restart deployment/frontend -n $K8S_NAMESPACE
 
+      - name: Reiniciar statefulsets para aplicar cambios de configuracion
+        run: |
+          kubectl rollout restart statefulset/auth-db -n $K8S_NAMESPACE
+          kubectl rollout restart statefulset/catalog-db -n $K8S_NAMESPACE
+          kubectl rollout restart statefulset/order-db -n $K8S_NAMESPACE
+          kubectl rollout restart statefulset/payment-db -n $K8S_NAMESPACE
+          kubectl rollout restart statefulset/delivery-db -n $K8S_NAMESPACE
+          kubectl rollout restart statefulset/redis -n $K8S_NAMESPACE
+
       # GKE Autopilot provisiona nodos bajo demanda, lo que puede tardar varios minutos.
       # continue-on-error: true evita que el pipeline falle por timeout mientras los nodos levantan.
       # El resumen final muestra el estado real de los pods.
