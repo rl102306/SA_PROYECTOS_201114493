@@ -368,6 +368,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [push]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # continue-on-error: el cluster GKE se crea con terraform apply (fuera del scope de CI).
+    # El pipeline no falla si el cluster no existe en el ambiente academico.
+    continue-on-error: true
 
     steps:
       - name: Checkout codigo fuente
@@ -496,6 +499,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [deploy]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    continue-on-error: true
 
     steps:
       - name: Checkout codigo fuente
@@ -532,6 +536,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ansible]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    continue-on-error: true
 
     steps:
       - name: Checkout codigo fuente
