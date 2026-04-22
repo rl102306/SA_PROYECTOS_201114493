@@ -68,13 +68,9 @@ jobs:
 
       - name: Terraform Init
         working-directory: ./terraform
-        run: |
-          # Override temporal: sustituye el backend GCS por uno local para CI.
-          # Esto permite que terraform init y plan corran sin el bucket GCS real.
-          # El archivo se elimina al final del step para no ensuciar el workspace.
-          printf 'terraform { backend "local" { path = "/tmp/tfstate" } }\n' > ci_backend_override.tf
-          terraform init -reconfigure -input=false
-          rm ci_backend_override.tf
+        run: terraform init -input=false
+        # Usa el backend GCS real (bucket delivereats-tfstate).
+        # La autenticacion viene del step Workload Identity anterior.
 
       - name: Terraform Validate
         working-directory: ./terraform
@@ -88,8 +84,6 @@ jobs:
         # disponible (ej. secrets no configurados en forks).
         continue-on-error: true
         run: |
-          # Re-aplicar override de backend local para el plan
-          printf 'terraform { backend "local" { path = "/tmp/tfstate" } }\n' > ci_backend_override.tf
           terraform plan \
             -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
             -var="sql_password=dummy-for-validation" \
@@ -97,9 +91,6 @@ jobs:
             -var="ci_service_account=${{ secrets.GCP_SERVICE_ACCOUNT }}" \
             -input=false \
             -no-color
-          rm ci_backend_override.tf
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY_JSON }}
 
   # ============================================================
   # JOB 1: BUILD
