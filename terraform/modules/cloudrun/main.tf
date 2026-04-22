@@ -39,7 +39,7 @@ resource "google_cloud_run_v2_service" "frontend" {
     }
 
     scaling {
-      min_instance_count = 0   # Escala a cero cuando no hay tráfico
+      min_instance_count = 0 # Escala a cero cuando no hay tráfico
       max_instance_count = 3
     }
   }

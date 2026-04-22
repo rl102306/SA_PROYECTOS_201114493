@@ -44,7 +44,7 @@ resource "google_project_iam_member" "gke_node_roles" {
 
 resource "google_container_cluster" "main" {
   name     = var.cluster_name
-  location = var.zone      # Zonal (1 control plane) — más barato que regional
+  location = var.zone # Zonal (1 control plane) — más barato que regional
 
   # Eliminar el node pool default y crear el nuestro con parámetros específicos.
   # El pool default no se puede desactivar, por eso se crea con 0 nodos.
@@ -63,7 +63,7 @@ resource "google_container_cluster" "main" {
   # Nodos privados: sin IP pública → Cloud NAT maneja el egress
   private_cluster_config {
     enable_private_nodes    = true
-    enable_private_endpoint = false  # El master sí es accesible por IP pública (para kubectl)
+    enable_private_endpoint = false # El master sí es accesible por IP pública (para kubectl)
     master_ipv4_cidr_block  = "172.16.0.0/28"
   }
 
@@ -134,8 +134,8 @@ resource "google_container_node_pool" "main" {
   }
 
   management {
-    auto_repair  = true   # GKE repara nodos unhealthy automáticamente
-    auto_upgrade = true   # Mantiene el Kubernetes version al día
+    auto_repair  = true # GKE repara nodos unhealthy automáticamente
+    auto_upgrade = true # Mantiene el Kubernetes version al día
   }
 }
 

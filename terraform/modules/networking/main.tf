@@ -27,7 +27,7 @@ resource "google_compute_network" "vpc" {
 
 resource "google_compute_subnetwork" "gke" {
   name          = "${var.prefix}-gke-subnet"
-  ip_cidr_range = "10.0.0.0/20"   # Nodos del cluster
+  ip_cidr_range = "10.0.0.0/20" # Nodos del cluster
   region        = var.region
   network       = google_compute_network.vpc.id
 
@@ -48,7 +48,7 @@ resource "google_compute_subnetwork" "gke" {
 
 resource "google_compute_subnetwork" "vms" {
   name          = "${var.prefix}-vm-subnet"
-  ip_cidr_range = "10.1.0.0/24"   # Suficiente para pocas VMs
+  ip_cidr_range = "10.1.0.0/24" # Suficiente para pocas VMs
   region        = var.region
   network       = google_compute_network.vpc.id
 

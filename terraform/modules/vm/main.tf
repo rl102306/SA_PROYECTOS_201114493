@@ -27,7 +27,7 @@ resource "google_compute_instance" "loadtest" {
   boot_disk {
     initialize_params {
       image = data.google_compute_image.ubuntu.self_link
-      size  = 20   # GB — suficiente para Ubuntu + Python + Locust
+      size = 20 # GB — suficiente para Ubuntu + Python + Locust
       type  = "pd-standard"
     }
   }

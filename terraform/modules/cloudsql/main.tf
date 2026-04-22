@@ -46,7 +46,7 @@ resource "google_sql_database_instance" "mssql" {
 
     # IP privada dentro de la VPC (no expuesta a internet)
     ip_configuration {
-      ipv4_enabled                                  = false  # Sin IP pública
+      ipv4_enabled                                  = false # Sin IP pública
       private_network                               = var.vpc_id
       enable_private_path_for_google_cloud_services = true
     }
@@ -56,8 +56,8 @@ resource "google_sql_database_instance" "mssql" {
     }
 
     maintenance_window {
-      day          = 7   # Domingo
-      hour         = 3   # 3am
+      day          = 7 # Domingo
+      hour         = 3 # 3am
       update_track = "stable"
     }
 

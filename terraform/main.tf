@@ -64,9 +64,9 @@ module "cloudsql" {
 module "cloudrun" {
   source = "./modules/cloudrun"
 
-  project_id   = var.project_id
-  region       = var.region
-  image        = var.frontend_image
+  project_id = var.project_id
+  region     = var.region
+  image      = var.frontend_image
 
   depends_on = [module.gke]
 }
