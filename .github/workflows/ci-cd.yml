@@ -88,7 +88,8 @@ jobs:
             -var="sql_password=dummy-for-validation" \
             -var="frontend_image=gcr.io/dummy/image:latest" \
             -input=false \
-            -no-color
+            -no-color \
+            -backend=false
         env:
           GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY_JSON }}
 
