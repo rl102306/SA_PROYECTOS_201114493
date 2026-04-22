@@ -32,15 +32,10 @@ spec:
       labels:
         app: elasticsearch
     spec:
-      initContainers:
-        # Elasticsearch requiere vm.max_map_count >= 262144 en el host.
-        # Este initContainer lo configura antes de arrancar ES.
-        - name: increase-vm-max-map
-          image: busybox:1.35
-          command: ["sysctl", "-w", "vm.max_map_count=262144"]
-          securityContext:
-            privileged: true
-
+      # GKE Autopilot no permite contenedores privilegiados.
+      # En lugar de sysctl vm.max_map_count=262144, usamos node.store.allow_mmap=false
+      # para que Elasticsearch use nio (no mmap) como store. Esto tiene impacto mínimo
+      # en rendimiento para un cluster de demo single-node.
       containers:
         - name: elasticsearch
           image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
@@ -57,6 +52,8 @@ spec:
               value: "false"                  # Sin TLS/auth para demo (simplifica la config)
             - name: xpack.security.http.ssl.enabled
               value: "false"
+            - name: node.store.allow_mmap
+              value: "false"                  # Usa nio store: no requiere vm.max_map_count alto
 
           resources:
             requests:
