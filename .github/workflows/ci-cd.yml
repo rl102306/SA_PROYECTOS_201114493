@@ -53,8 +53,18 @@ jobs:
 
       - name: Terraform fmt check
         working-directory: ./terraform
-        run: terraform fmt -check -recursive
-        # Falla si algún archivo no está formateado con "terraform fmt"
+        run: |
+          terraform fmt -recursive
+          if ! git diff --exit-code; then
+            echo "──────────────────────────────────────────────────"
+            echo " ERROR: Los siguientes archivos necesitan formato:"
+            git diff --name-only
+            echo " Ejecuta 'terraform fmt -recursive' localmente"
+            echo " y commitea los cambios antes de hacer push."
+            echo "──────────────────────────────────────────────────"
+            exit 1
+          fi
+          echo "OK: todos los archivos Terraform están formateados."
 
       - name: Terraform Init
         working-directory: ./terraform
