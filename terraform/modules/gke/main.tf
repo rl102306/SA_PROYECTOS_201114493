@@ -47,9 +47,17 @@ resource "google_container_cluster" "main" {
   location = var.zone # Zonal (1 control plane) — más barato que regional
 
   # Eliminar el node pool default y crear el nuestro con parámetros específicos.
-  # El pool default no se puede desactivar, por eso se crea con 0 nodos.
+  # El pool default no se puede desactivar, por eso se crea con 1 nodo y se elimina.
+  # node_config aquí aplica solo al pool temporal — forzamos pd-standard para no
+  # consumir quota de SSD.
   remove_default_node_pool = true
   initial_node_count       = 1
+
+  node_config {
+    disk_type    = "pd-standard"
+    disk_size_gb = 20
+    machine_type = var.machine_type
+  }
 
   network    = var.vpc_name
   subnetwork = var.gke_subnet_name
