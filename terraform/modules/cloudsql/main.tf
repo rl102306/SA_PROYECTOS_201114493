@@ -46,9 +46,8 @@ resource "google_sql_database_instance" "mssql" {
 
     # IP privada dentro de la VPC (no expuesta a internet)
     ip_configuration {
-      ipv4_enabled                                  = false # Sin IP pública
-      private_network                               = var.vpc_id
-      enable_private_path_for_google_cloud_services = true
+      ipv4_enabled    = false # Sin IP pública
+      private_network = var.vpc_id
     }
 
     backup_configuration {
