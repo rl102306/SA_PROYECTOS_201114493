@@ -1,0 +1,93 @@
+# =============================================================
+# CRONJOB — order-cleanup
+# =============================================================
+# Rechaza automáticamente órdenes en estado PENDING que no han
+# sido aceptadas por el restaurante tras el tiempo configurado.
+#
+# Patrón anti-spam:
+#   - La columna `rejection_notified` en BD garantiza que cada
+#     orden recibe exactamente UN email de rechazo.
+#   - La cláusula WHERE en el UPDATE es atómica: si dos pods
+#     corren en paralelo (no debería, ver concurrencyPolicy),
+#     solo uno procesa cada orden.
+#
+# concurrencyPolicy: Forbid → nunca dos runs simultáneos.
+# backoffLimit: 2           → reintenta hasta 2 veces si falla.
+# successfulJobsHistoryLimit: 5  → conserva logs de últimos 5 runs.
+# =============================================================
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: order-cleanup
+  namespace: delivereats
+  labels:
+    app: order-cleanup
+    component: cronjob
+spec:
+  # Corre cada 5 minutos para detectar expiraciones rápido.
+  # El timeout real de rechazo se configura con PENDING_TIMEOUT_MINUTES.
+  schedule: "*/5 * * * *"
+
+  # Nunca ejecutar dos runs en paralelo (refuerza anti-spam)
+  concurrencyPolicy: Forbid
+
+  # Cuántos Jobs completados/fallidos conservar para ver logs
+  successfulJobsHistoryLimit: 5
+  failedJobsHistoryLimit: 3
+
+  jobTemplate:
+    spec:
+      # Reintentar hasta 2 veces si el pod falla
+      backoffLimit: 2
+
+      template:
+        metadata:
+          labels:
+            app: order-cleanup
+        spec:
+          # El pod NO se reinicia solo; si falla, K8s crea uno nuevo (backoffLimit)
+          restartPolicy: OnFailure
+
+          containers:
+            - name: order-cleanup
+              image: delivereats/order-cleanup:latest
+              imagePullPolicy: IfNotPresent
+
+              env:
+                # Base de datos (misma que order-service)
+                - name: DB_HOST
+                  value: "order-db"
+                - name: DB_PORT
+                  value: "5432"
+                - name: DB_NAME
+                  value: "order_db"
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: order-db-secret
+                      key: username
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: order-db-secret
+                      key: password
+
+                # URLs de servicios gRPC internos
+                - name: AUTH_SERVICE_URL
+                  value: "auth-service:50052"
+                - name: NOTIFICATION_SERVICE_URL
+                  value: "notification-service:50055"
+
+                # Tiempo máximo (minutos) antes de rechazar una orden PENDING
+                # 60 = 1 hora según requerimiento de la Fase 3
+                - name: PENDING_TIMEOUT_MINUTES
+                  value: "60"
+
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "64Mi"
+                limits:
+                  cpu: "200m"
+                  memory: "128Mi"

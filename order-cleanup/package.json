@@ -1,0 +1,21 @@
+{
+  "name": "order-cleanup",
+  "version": "1.0.0",
+  "description": "CronJob: rechaza órdenes PENDING sin atender tras 1 hora",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.9.0",
+    "@grpc/proto-loader": "^0.7.10",
+    "dotenv": "^16.3.1",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.10.9",
+    "typescript": "^5.0.0"
+  }
+}

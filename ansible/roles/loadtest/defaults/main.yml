@@ -1,0 +1,15 @@
+---
+# URL base de la aplicación que se va a probar
+app_base_url: "http://delivereats.local"
+
+# Directorio donde se copian los scripts en la VM
+tests_dir: "/home/ubuntu/delivereats-tests"
+
+# Versión de Locust a instalar
+locust_version: "2.20.0"
+
+# Parámetros de la prueba de carga
+locust_users: 10          # Usuarios concurrentes
+locust_spawn_rate: 2      # Usuarios que se suman por segundo al inicio
+locust_run_time: "2m"     # Duración de la prueba
+locust_report: "{{ tests_dir }}/reports/load_report.html"

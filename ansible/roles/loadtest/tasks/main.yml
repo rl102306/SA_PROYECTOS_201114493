@@ -1,0 +1,119 @@
+---
+# =============================================================
+# Rol: loadtest
+# =============================================================
+# Configura la VM para ejecutar pruebas de carga con Locust.
+# Cada tarea usa módulos idempotentes: si ya está instalado/
+# configurado, Ansible reporta "ok" en lugar de "changed".
+# =============================================================
+
+# ── 1. Actualizar cache de paquetes ───────────────────────────────────────────
+- name: Actualizar cache de apt
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600   # No actualiza si el cache tiene menos de 1 hora
+
+# ── 2. Instalar dependencias del sistema ──────────────────────────────────────
+- name: Instalar Python 3, pip y herramientas base
+  apt:
+    name:
+      - python3
+      - python3-pip
+      - python3-venv
+      - curl
+      - jq           # Usado en el smoke test para parsear JSON
+      - git
+    state: present   # "present" = instalar si no está. Idempotente.
+
+# ── 3. Crear directorio de trabajo ────────────────────────────────────────────
+- name: Crear directorio de tests
+  file:
+    path: "{{ tests_dir }}"
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: "0755"
+
+- name: Crear directorio de reportes
+  file:
+    path: "{{ tests_dir }}/reports"
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: "0755"
+
+# ── 4. Instalar Locust en entorno virtual ─────────────────────────────────────
+# Se usa virtualenv para aislar las dependencias Python del sistema.
+# pip con "version" es idempotente: no reinstala si la versión coincide.
+- name: Crear entorno virtual Python
+  become_user: ubuntu
+  command: python3 -m venv "{{ tests_dir }}/venv"
+  args:
+    creates: "{{ tests_dir }}/venv/bin/activate"   # Solo crea si no existe
+
+- name: Instalar Locust en el entorno virtual
+  become_user: ubuntu
+  pip:
+    name: "locust=={{ locust_version }}"
+    virtualenv: "{{ tests_dir }}/venv"
+    state: present
+
+# ── 5. Copiar scripts de prueba ───────────────────────────────────────────────
+# "copy" con "src" relativo busca en roles/loadtest/files/
+# Solo actualiza el archivo si el contenido cambió (checksum)
+- name: Copiar script de smoke test
+  copy:
+    src: smoke_test.sh
+    dest: "{{ tests_dir }}/smoke_test.sh"
+    owner: ubuntu
+    group: ubuntu
+    mode: "0755"   # Ejecutable
+
+- name: Copiar script de Locust
+  copy:
+    src: locustfile.py
+    dest: "{{ tests_dir }}/locustfile.py"
+    owner: ubuntu
+    group: ubuntu
+    mode: "0644"
+
+# ── 6. Crear script de ejecución de la prueba de carga ───────────────────────
+- name: Crear script run_load_test.sh
+  copy:
+    dest: "{{ tests_dir }}/run_load_test.sh"
+    owner: ubuntu
+    group: ubuntu
+    mode: "0755"
+    content: |
+      #!/bin/bash
+      # Ejecuta Locust en modo headless y genera reporte HTML
+      set -e
+
+      VENV="{{ tests_dir }}/venv"
+      REPORT="{{ locust_report }}"
+      BASE_URL="{{ app_base_url }}"
+
+      echo "[load-test] Iniciando prueba de carga contra $BASE_URL"
+      echo "[load-test] Usuarios: {{ locust_users }} | Spawn rate: {{ locust_spawn_rate }}/s | Duración: {{ locust_run_time }}"
+
+      $VENV/bin/locust \
+        --headless \
+        --host "$BASE_URL" \
+        --users {{ locust_users }} \
+        --spawn-rate {{ locust_spawn_rate }} \
+        --run-time {{ locust_run_time }} \
+        --html "$REPORT" \
+        --locustfile {{ tests_dir }}/locustfile.py
+
+      echo "[load-test] Reporte generado: $REPORT"
+
+# ── 7. Verificar que Locust quedó instalado correctamente ────────────────────
+- name: Verificar versión de Locust instalada
+  become_user: ubuntu
+  command: "{{ tests_dir }}/venv/bin/locust --version"
+  register: locust_version_output
+  changed_when: false   # Este comando nunca "cambia" nada — solo verifica
+
+- name: Mostrar versión de Locust
+  debug:
+    msg: "Locust instalado: {{ locust_version_output.stdout }}"

@@ -1,0 +1,307 @@
+# =============================================================
+# Fluentd — Recolección y routing de logs
+# =============================================================
+# Fluentd corre como DaemonSet: un pod en CADA nodo del cluster.
+# Esto garantiza que ningún log se pierda independientemente de
+# en qué nodo corra cada microservicio.
+#
+# Flujo de datos:
+#   stdout de pods → /var/log/containers/*.log (en el nodo)
+#   → Fluentd lee y parsea los archivos de log
+#   → Enriquece con metadata de K8s (pod, namespace, labels)
+#   → Filtra: solo logs del namespace "delivereats"
+#   → Enruta a índice ES específico según el microservicio
+#
+# Índices en Elasticsearch (uno por microservicio):
+#   delivereats-api-gateway-YYYY.MM.DD
+#   delivereats-auth-service-YYYY.MM.DD
+#   delivereats-catalog-service-YYYY.MM.DD
+#   delivereats-order-service-YYYY.MM.DD
+#   delivereats-delivery-service-YYYY.MM.DD
+#   delivereats-fx-service-YYYY.MM.DD
+#   delivereats-payment-service-YYYY.MM.DD
+#   delivereats-notification-service-YYYY.MM.DD
+#   delivereats-order-cleanup-YYYY.MM.DD
+#   delivereats-other-YYYY.MM.DD  (logs del namespace no identificados)
+# =============================================================
+
+# ── RBAC ─────────────────────────────────────────────────────────────────────
+# Fluentd necesita leer metadata de Pods y Namespaces para enriquecer los logs.
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fluentd
+  namespace: logging
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fluentd
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "namespaces"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: fluentd
+roleRef:
+  kind: ClusterRole
+  name: fluentd
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: fluentd
+    namespace: logging
+
+---
+# ── ConfigMap: configuración de Fluentd ──────────────────────────────────────
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-config
+  namespace: logging
+data:
+  fluent.conf: |
+    # ── INPUT: leer logs de contenedores ──────────────────────────────────
+    # Kubernetes escribe los logs de stdout/stderr de cada contenedor en
+    # /var/log/containers/<pod>_<namespace>_<container>-<id>.log
+    # El formato es JSON con campos: log, stream, time.
+
+    <source>
+      @type tail
+      @id in_tail_container_logs
+      path /var/log/containers/*.log
+      pos_file /var/log/fluentd-containers.log.pos
+      tag kubernetes.*
+      read_from_head true
+      <parse>
+        @type json
+        time_format %Y-%m-%dT%H:%M:%S.%NZ
+        time_key time
+      </parse>
+    </source>
+
+    # ── FILTER: enriquecer con metadata de Kubernetes ─────────────────────
+    # Este plugin consulta la API de K8s para agregar al registro:
+    #   kubernetes.namespace_name, kubernetes.pod_name,
+    #   kubernetes.container_name, kubernetes.labels.*
+
+    <filter kubernetes.**>
+      @type kubernetes_metadata
+      @id filter_kube_metadata
+      kubernetes_url "https://#{ENV['KUBERNETES_SERVICE_HOST']}:#{ENV['KUBERNETES_SERVICE_PORT']}"
+      skip_labels false
+      skip_container_metadata false
+      skip_namespace_metadata false
+    </filter>
+
+    # ── FILTER: solo logs del namespace delivereats ───────────────────────
+    # Descartamos logs del sistema (kube-system, logging, etc.)
+
+    <filter kubernetes.**>
+      @type grep
+      <regexp>
+        key $.kubernetes.namespace_name
+        pattern ^delivereats$
+      </regexp>
+    </filter>
+
+    # ── FILTER: parsear el campo "log" si viene como JSON ─────────────────
+    # Algunos microservicios pueden emitir JSON en su stdout.
+    # Si no es JSON, se deja como string plano en el campo "message".
+
+    <filter kubernetes.**>
+      @type parser
+      key_name log
+      reserve_data true
+      reserve_time true
+      remove_key_name_field false
+      <parse>
+        @type multi_format
+        <pattern>
+          format json
+        </pattern>
+        <pattern>
+          format none
+          message_key message
+        </pattern>
+      </parse>
+    </filter>
+
+    # ── MATCH: routing por microservicio a índices separados ──────────────
+    # Patrón: el nombre del índice ES incluye el nombre del servicio
+    # y la fecha (YYYY.MM.DD) para rotación automática diaria.
+    #
+    # Se usa <label> para agrupar las reglas de routing y evitar
+    # que los registros pasen por múltiples bloques <match>.
+
+    <match kubernetes.**>
+      @type rewrite_tag_filter
+      <rule>
+        key     $.kubernetes.labels.app
+        pattern ^api-gateway$
+        tag     delivereats.api-gateway
+      </rule>
+      <rule>
+        key     $.kubernetes.labels.app
+        pattern ^auth-service$
+        tag     delivereats.auth-service
+      </rule>
+      <rule>
+        key     $.kubernetes.labels.app
+        pattern ^catalog-service$
+        tag     delivereats.catalog-service
+      </rule>
+      <rule>
+        key     $.kubernetes.labels.app
+        pattern ^order-service$
+        tag     delivereats.order-service
+      </rule>
+      <rule>
+        key     $.kubernetes.labels.app
+        pattern ^delivery-service$
+        tag     delivereats.delivery-service
+      </rule>
+      <rule>
+        key     $.kubernetes.labels.app
+        pattern ^fx-service$
+        tag     delivereats.fx-service
+      </rule>
+      <rule>
+        key     $.kubernetes.labels.app
+        pattern ^payment-service$
+        tag     delivereats.payment-service
+      </rule>
+      <rule>
+        key     $.kubernetes.labels.app
+        pattern ^notification-service$
+        tag     delivereats.notification-service
+      </rule>
+      <rule>
+        key     $.kubernetes.labels.app
+        pattern ^order-cleanup$
+        tag     delivereats.order-cleanup
+      </rule>
+      <rule>
+        key     $.kubernetes.labels.app
+        pattern ^.*$
+        tag     delivereats.other
+      </rule>
+    </match>
+
+    # ── OUTPUT: enviar a Elasticsearch con índice por servicio ────────────
+
+    <match delivereats.**>
+      @type elasticsearch
+      @id out_elasticsearch
+      host elasticsearch.logging.svc.cluster.local
+      port 9200
+      scheme http
+
+      # El índice se construye como: delivereats-<servicio>-YYYY.MM.DD
+      # "tag" aquí es el tag de Fluentd: "delivereats.auth-service" → "delivereats-auth-service"
+      logstash_format true
+      logstash_prefix ${tag_parts[0]}-${tag_parts[1]}
+      logstash_dateformat %Y.%m.%d
+
+      # Buffer en disco: si ES no está disponible, los logs se guardan
+      # temporalmente y se reintentan (no se pierden).
+      <buffer tag, time>
+        @type file
+        path /var/log/fluentd-buffers/kubernetes.*.buffer
+        flush_mode interval
+        retry_type exponential_backoff
+        flush_interval 5s
+        retry_forever false
+        retry_max_interval 30s
+        chunk_limit_size 2M
+        queue_limit_length 8
+        overflow_action block
+      </buffer>
+    </match>
+
+---
+# ── DaemonSet ─────────────────────────────────────────────────────────────────
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd
+  namespace: logging
+  labels:
+    app: fluentd
+spec:
+  selector:
+    matchLabels:
+      app: fluentd
+  template:
+    metadata:
+      labels:
+        app: fluentd
+    spec:
+      serviceAccountName: fluentd
+
+      # Tolerations: permite que Fluentd corra en nodos con taints
+      # (como nodos master o nodos con taints especiales de GKE).
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/master
+          effect: NoSchedule
+
+      containers:
+        - name: fluentd
+          # imagen oficial con plugins de K8s y Elasticsearch preinstalados
+          image: fluent/fluentd-kubernetes-daemonset:v1.16-debian-elasticsearch8-1
+          env:
+            - name: FLUENT_ELASTICSEARCH_HOST
+              value: "elasticsearch.logging.svc.cluster.local"
+            - name: FLUENT_ELASTICSEARCH_PORT
+              value: "9200"
+            - name: FLUENT_ELASTICSEARCH_SCHEME
+              value: "http"
+            - name: FLUENTD_SYSTEMD_CONF
+              value: "disable"   # Deshabilita colección de logs de systemd (no aplica en K8s)
+            - name: FLUENT_CONTAINER_TAIL_EXCLUDE_PATH
+              value: "/var/log/containers/fluentd*"   # No leer sus propios logs (evita loop)
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "200Mi"
+            limits:
+              cpu: "500m"
+              memory: "400Mi"
+
+          volumeMounts:
+            - name: config-volume
+              mountPath: /fluentd/etc/fluent.conf
+              subPath: fluent.conf
+
+            # Logs de contenedores escritos por el runtime de K8s
+            - name: varlog
+              mountPath: /var/log
+
+            # Posición de lectura de archivos (para retomar tras reinicio)
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+
+      volumes:
+        - name: config-volume
+          configMap:
+            name: fluentd-config
+
+        - name: varlog
+          hostPath:
+            path: /var/log
+
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers

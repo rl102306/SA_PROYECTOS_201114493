@@ -1,0 +1,96 @@
+# =============================================================
+# Kibana — Dashboards de visualización de logs
+# =============================================================
+# Kibana se conecta a Elasticsearch y provee:
+#   - Discover: explorar logs en tiempo real
+#   - Dashboards: gráficas de errores por servicio, latencia, etc.
+#   - Alertas: notificar cuando hay picos de errores
+#
+# Acceso: http://delivereats.local/kibana
+# =============================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  namespace: logging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+    spec:
+      containers:
+        - name: kibana
+          image: docker.elastic.co/kibana/kibana:8.11.0
+          ports:
+            - containerPort: 5601
+
+          env:
+            - name: ELASTICSEARCH_HOSTS
+              value: "http://elasticsearch:9200"
+            - name: SERVER_BASEPATH
+              value: "/kibana"               # Necesario para que el Ingress funcione en /kibana
+            - name: SERVER_REWRITEBASEPATH
+              value: "true"
+            - name: XPACK_SECURITY_ENABLED
+              value: "false"
+
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+
+          readinessProbe:
+            httpGet:
+              path: /kibana/api/status
+              port: 5601
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+  namespace: logging
+spec:
+  type: ClusterIP
+  selector:
+    app: kibana
+  ports:
+    - port: 5601
+      targetPort: 5601
+
+---
+# Ingress: expone Kibana en http://delivereats.local/kibana
+# Usa el mismo Ingress controller que ya tiene el cluster.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kibana-ingress
+  namespace: logging
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: delivereats.local
+      http:
+        paths:
+          - path: /kibana(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: kibana
+                port:
+                  number: 5601

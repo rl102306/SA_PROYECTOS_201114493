@@ -1,0 +1,443 @@
+# =============================================================
+# Grafana — Dashboards de métricas
+# =============================================================
+# Patrón: Grafana Provisioning
+#   Grafana puede cargar datasources y dashboards automáticamente
+#   desde archivos YAML/JSON al arrancar. Esto evita configuración
+#   manual y hace el setup reproducible (IaC para dashboards).
+#
+# ConfigMaps usados:
+#   - grafana-datasources  → configura Prometheus como fuente
+#   - grafana-dashboards-provider → le dice a Grafana dónde buscar JSONs
+#   - grafana-dashboard-overview → JSON del dashboard "Estado General"
+#   - grafana-dashboard-latency  → JSON del dashboard "Latencia HTTP"
+#   - grafana-dashboard-system   → JSON del dashboard "Sistema (nodos)"
+#
+# Acceso: http://delivereats.local/grafana
+# Usuario: admin / Password: admin (cambiar en producción)
+# =============================================================
+
+# ── Datasource: Prometheus ────────────────────────────────────────────────────
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: monitoring
+data:
+  prometheus.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus:9090
+        access: proxy
+        isDefault: true
+        editable: false
+
+---
+# ── Dashboard Provider: dónde buscar los JSON de dashboards ──────────────────
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-provider
+  namespace: monitoring
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: delivereats
+        folder: DeliverEats
+        type: file
+        disableDeletion: true
+        editable: false
+        options:
+          path: /var/lib/grafana/dashboards
+
+---
+# ── Dashboard 1: Estado General (uptime, requests/s, errores) ────────────────
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-overview
+  namespace: monitoring
+data:
+  overview.json: |
+    {
+      "title": "DeliverEats — Estado General",
+      "uid": "delivereats-overview",
+      "tags": ["delivereats"],
+      "timezone": "browser",
+      "schemaVersion": 38,
+      "refresh": "30s",
+      "panels": [
+        {
+          "id": 1,
+          "title": "Pods Running (namespace delivereats)",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "count(kube_pod_status_phase{namespace=\"delivereats\", phase=\"Running\"})",
+            "legendFormat": "Pods Running"
+          }],
+          "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "fieldConfig": {"defaults": {"thresholds": {"steps": [
+            {"color": "red", "value": 0},
+            {"color": "yellow", "value": 5},
+            {"color": "green", "value": 8}
+          ]}}}
+        },
+        {
+          "id": 2,
+          "title": "Requests por segundo (total)",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "sum(rate(http_requests_total[5m]))",
+            "legendFormat": "req/s"
+          }],
+          "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "fieldConfig": {"defaults": {"unit": "reqps", "thresholds": {"steps": [
+            {"color": "green", "value": 0}
+          ]}}}
+        },
+        {
+          "id": 3,
+          "title": "Tasa de errores HTTP (%)",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "100 * sum(rate(http_errors_total[5m])) / sum(rate(http_requests_total[5m]))",
+            "legendFormat": "Error %"
+          }],
+          "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "fieldConfig": {"defaults": {"unit": "percent", "thresholds": {"steps": [
+            {"color": "green", "value": 0},
+            {"color": "yellow", "value": 1},
+            {"color": "red", "value": 5}
+          ]}}}
+        },
+        {
+          "id": 4,
+          "title": "Reinicios de contenedores",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "sum(kube_pod_container_status_restarts_total{namespace=\"delivereats\"})",
+            "legendFormat": "Reinicios"
+          }],
+          "options": {"colorMode": "background", "reduceOptions": {"calcs": ["lastNotNull"]}},
+          "fieldConfig": {"defaults": {"thresholds": {"steps": [
+            {"color": "green", "value": 0},
+            {"color": "yellow", "value": 5},
+            {"color": "red", "value": 20}
+          ]}}}
+        },
+        {
+          "id": 5,
+          "title": "Requests por segundo por ruta",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 4},
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "sum by (route) (rate(http_requests_total[5m]))",
+            "legendFormat": "{{ route }}"
+          }],
+          "fieldConfig": {"defaults": {"unit": "reqps"}}
+        },
+        {
+          "id": 6,
+          "title": "Estado de Pods por servicio",
+          "type": "table",
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12},
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "kube_pod_status_phase{namespace=\"delivereats\"}",
+            "legendFormat": "",
+            "instant": true,
+            "format": "table"
+          }],
+          "transformations": [
+            {"id": "organize", "options": {"renameByName": {
+              "pod": "Pod", "phase": "Estado", "namespace": "Namespace"
+            }}}
+          ]
+        }
+      ]
+    }
+
+---
+# ── Dashboard 2: Latencia HTTP ────────────────────────────────────────────────
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-latency
+  namespace: monitoring
+data:
+  latency.json: |
+    {
+      "title": "DeliverEats — Latencia HTTP",
+      "uid": "delivereats-latency",
+      "tags": ["delivereats"],
+      "timezone": "browser",
+      "schemaVersion": 38,
+      "refresh": "30s",
+      "panels": [
+        {
+          "id": 1,
+          "title": "Latencia p50 por ruta (mediana)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "histogram_quantile(0.50, sum by (le, route) (rate(http_request_duration_seconds_bucket[5m])))",
+            "legendFormat": "p50 {{ route }}"
+          }],
+          "fieldConfig": {"defaults": {"unit": "s"}}
+        },
+        {
+          "id": 2,
+          "title": "Latencia p95 por ruta",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "histogram_quantile(0.95, sum by (le, route) (rate(http_request_duration_seconds_bucket[5m])))",
+            "legendFormat": "p95 {{ route }}"
+          }],
+          "fieldConfig": {"defaults": {"unit": "s", "thresholds": {"steps": [
+            {"color": "green", "value": 0},
+            {"color": "yellow", "value": 1},
+            {"color": "red", "value": 2}
+          ]}}}
+        },
+        {
+          "id": 3,
+          "title": "Latencia p99 por ruta",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "histogram_quantile(0.99, sum by (le, route) (rate(http_request_duration_seconds_bucket[5m])))",
+            "legendFormat": "p99 {{ route }}"
+          }],
+          "fieldConfig": {"defaults": {"unit": "s"}}
+        },
+        {
+          "id": 4,
+          "title": "Errores HTTP por ruta (req/s)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "sum by (route) (rate(http_errors_total[5m]))",
+            "legendFormat": "{{ route }}"
+          }],
+          "fieldConfig": {"defaults": {"unit": "reqps", "color": {"mode": "fixed", "fixedColor": "red"}}}
+        }
+      ]
+    }
+
+---
+# ── Dashboard 3: Sistema (nodos) ──────────────────────────────────────────────
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-system
+  namespace: monitoring
+data:
+  system.json: |
+    {
+      "title": "DeliverEats — Sistema (Nodos)",
+      "uid": "delivereats-system",
+      "tags": ["delivereats", "infrastructure"],
+      "timezone": "browser",
+      "schemaVersion": 38,
+      "refresh": "30s",
+      "panels": [
+        {
+          "id": 1,
+          "title": "CPU por nodo (%)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "100 - (avg by (node) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+            "legendFormat": "{{ node }}"
+          }],
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100,
+            "thresholds": {"steps": [
+              {"color": "green", "value": 0},
+              {"color": "yellow", "value": 70},
+              {"color": "red", "value": 85}
+            ]}}}
+        },
+        {
+          "id": 2,
+          "title": "Memoria disponible por nodo (%)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "(node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100",
+            "legendFormat": "{{ node }}"
+          }],
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}}
+        },
+        {
+          "id": 3,
+          "title": "Uso de disco por nodo (%)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "targets": [{
+            "datasource": "Prometheus",
+            "expr": "100 - ((node_filesystem_avail_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!=\"tmpfs\"}) * 100)",
+            "legendFormat": "{{ node }}"
+          }],
+          "fieldConfig": {"defaults": {"unit": "percent", "min": 0, "max": 100}}
+        },
+        {
+          "id": 4,
+          "title": "Tráfico de red por nodo (bytes/s)",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "targets": [
+            {
+              "datasource": "Prometheus",
+              "expr": "rate(node_network_receive_bytes_total{device!~\"lo|veth.*\"}[5m])",
+              "legendFormat": "RX {{ node }} {{ device }}"
+            },
+            {
+              "datasource": "Prometheus",
+              "expr": "rate(node_network_transmit_bytes_total{device!~\"lo|veth.*\"}[5m])",
+              "legendFormat": "TX {{ node }} {{ device }}"
+            }
+          ],
+          "fieldConfig": {"defaults": {"unit": "Bps"}}
+        }
+      ]
+    }
+
+---
+# ── Deployment ────────────────────────────────────────────────────────────────
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:10.2.0
+          ports:
+            - containerPort: 3000
+
+          env:
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: "admin"
+            - name: GF_SERVER_ROOT_URL
+              value: "%(protocol)s://%(domain)s/grafana"
+            - name: GF_SERVER_SERVE_FROM_SUB_PATH
+              value: "true"
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "300m"
+              memory: "512Mi"
+
+          volumeMounts:
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: dashboards-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: dashboard-overview
+              mountPath: /var/lib/grafana/dashboards/overview.json
+              subPath: overview.json
+            - name: dashboard-latency
+              mountPath: /var/lib/grafana/dashboards/latency.json
+              subPath: latency.json
+            - name: dashboard-system
+              mountPath: /var/lib/grafana/dashboards/system.json
+              subPath: system.json
+
+          readinessProbe:
+            httpGet:
+              path: /grafana/api/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
+      volumes:
+        - name: datasources
+          configMap:
+            name: grafana-datasources
+        - name: dashboards-provider
+          configMap:
+            name: grafana-dashboards-provider
+        - name: dashboard-overview
+          configMap:
+            name: grafana-dashboard-overview
+        - name: dashboard-latency
+          configMap:
+            name: grafana-dashboard-latency
+        - name: dashboard-system
+          configMap:
+            name: grafana-dashboard-system
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  type: ClusterIP
+  selector:
+    app: grafana
+  ports:
+    - port: 3000
+      targetPort: 3000
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: delivereats.local
+      http:
+        paths:
+          - path: /grafana(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000

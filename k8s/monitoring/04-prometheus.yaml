@@ -1,0 +1,278 @@
+# =============================================================
+# Prometheus — Recolección y almacenamiento de métricas
+# =============================================================
+# Prometheus hace "pull" (scrape) de los endpoints /metrics cada
+# 15 segundos. Almacena las series temporales en disco (PVC).
+#
+# Targets configurados:
+#   1. api-gateway          → métricas HTTP de la app (prom-client)
+#   2. node-exporter        → métricas del SO por nodo
+#   3. kube-state-metrics   → estado de objetos K8s
+#   4. prometheus mismo     → auto-monitoreo
+#
+# Retención de datos: 15 días (suficiente para demo/proyecto)
+# =============================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s       # Cada cuánto hace scrape
+      evaluation_interval: 15s   # Cada cuánto evalúa las alertas
+
+    # ── Reglas de alertas ───────────────────────────────────────────────────
+    rule_files:
+      - /etc/prometheus/alerts.yml
+
+    # ── Alertmanager (opcional: comentado para no requerir otro servicio) ───
+    # alerting:
+    #   alertmanagers:
+    #     - static_configs:
+    #         - targets: ['alertmanager:9093']
+
+    # ── Targets de scrape ───────────────────────────────────────────────────
+    scrape_configs:
+
+      # Prometheus se scrapeea a sí mismo
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+      # API Gateway: métricas HTTP de la aplicación
+      # prom-client expone: http_request_duration_seconds, http_requests_total, etc.
+      - job_name: 'api-gateway'
+        static_configs:
+          - targets: ['api-gateway.delivereats.svc.cluster.local:3000']
+        metrics_path: /metrics
+        scrape_interval: 15s
+
+      # Node Exporter: métricas del sistema operativo de cada nodo
+      # Usa service discovery de K8s para encontrar todos los pods del DaemonSet
+      - job_name: 'node-exporter'
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names: ['monitoring']
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_label_app]
+            action: keep
+            regex: node-exporter
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: node
+
+      # kube-state-metrics: estado de objetos Kubernetes
+      - job_name: 'kube-state-metrics'
+        static_configs:
+          - targets: ['kube-state-metrics.monitoring.svc.cluster.local:8080']
+
+      # Pods con anotación prometheus.io/scrape: "true"
+      # Permite agregar nuevos servicios al scraping sin cambiar este ConfigMap
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: ['delivereats']
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: service
+
+  alerts.yml: |
+    groups:
+      - name: delivereats-alerts
+        interval: 30s
+        rules:
+
+          # Alerta: pod caído por más de 2 minutos
+          - alert: PodDown
+            expr: kube_pod_status_phase{namespace="delivereats", phase!="Running"} > 0
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Pod {{ $labels.pod }} no está Running"
+              description: "El pod {{ $labels.pod }} lleva más de 2 minutos en estado {{ $labels.phase }}"
+
+          # Alerta: tasa de errores HTTP > 5% en los últimos 5 minutos
+          - alert: HighErrorRate
+            expr: |
+              sum(rate(http_errors_total[5m])) by (route)
+              /
+              sum(rate(http_requests_total[5m])) by (route)
+              > 0.05
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Tasa de errores alta en {{ $labels.route }}"
+              description: "La ruta {{ $labels.route }} tiene más del 5% de errores en los últimos 5 minutos"
+
+          # Alerta: latencia p95 > 2 segundos
+          - alert: HighLatency
+            expr: |
+              histogram_quantile(0.95,
+                sum(rate(http_request_duration_seconds_bucket[5m])) by (le, route)
+              ) > 2
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Latencia alta en {{ $labels.route }}"
+              description: "El p95 de latencia en {{ $labels.route }} supera los 2 segundos"
+
+          # Alerta: uso de CPU del nodo > 85%
+          - alert: HighNodeCPU
+            expr: |
+              100 - (avg by (node) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "CPU alta en nodo {{ $labels.node }}"
+              description: "El nodo {{ $labels.node }} tiene uso de CPU > 85% por más de 10 minutos"
+
+          # Alerta: memoria disponible < 10%
+          - alert: LowNodeMemory
+            expr: |
+              (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 10
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Memoria baja en nodo {{ $labels.node }}"
+              description: "El nodo {{ $labels.node }} tiene menos del 10% de memoria disponible"
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: monitoring
+
+---
+# Prometheus necesita leer pods y endpoints para el kubernetes_sd_configs
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "pods", "endpoints", "services"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["extensions", "networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+roleRef:
+  kind: ClusterRole
+  name: prometheus
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: monitoring
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      serviceAccountName: prometheus
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.48.0
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time=15d
+            - --web.enable-lifecycle         # Permite reload sin reiniciar el pod
+          ports:
+            - containerPort: 9090
+
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: data
+              mountPath: /prometheus
+
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+            initialDelaySeconds: 15
+            periodSeconds: 10
+
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: prometheus-data
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-data
+  namespace: monitoring
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app: prometheus
+spec:
+  type: ClusterIP
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090
+      targetPort: 9090

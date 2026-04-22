@@ -9,6 +9,7 @@ import paymentRoutes from './routes/paymentRoutes';
 import adminRoutes from './routes/adminRoutes';
 import deliveryRoutes from './routes/deliveryRoutes';
 import ratingRoutes from './routes/ratingRoutes';
+import { metricsMiddleware, register } from './middleware/metricsMiddleware';
 
 dotenv.config();
 
@@ -27,6 +28,16 @@ app.use(express.urlencoded({ extended: true }));
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
+});
+
+// Middleware de métricas Prometheus — debe ir antes de las rutas
+app.use(metricsMiddleware);
+
+// Endpoint de métricas Prometheus — Prometheus scrape cada 15s
+// No requiere autenticación (red interna del cluster)
+app.get('/metrics', async (req: Request, res: Response) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
 });
 
 // Verificación de estado del servicio

@@ -30,6 +30,7 @@ export const initializeDatabase = async (pool: Pool): Promise<void> => {
       status VARCHAR(50) NOT NULL,
       total_amount DECIMAL(10, 2) NOT NULL,
       delivery_address TEXT,
+      rejection_notified BOOLEAN NOT NULL DEFAULT false,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );

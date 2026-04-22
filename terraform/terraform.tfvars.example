@@ -1,0 +1,26 @@
+# Copiar a terraform.tfvars y completar los valores reales.
+# NUNCA commitear terraform.tfvars si contiene secretos.
+
+project_id   = "mi-proyecto-gcp"
+region       = "us-central1"
+zone         = "us-central1-a"
+environment  = "prod"
+
+# GKE
+gke_cluster_name = "delivereats-cluster"
+gke_node_count   = 2
+gke_machine_type = "e2-standard-2"
+
+# Cloud SQL
+sql_instance_name    = "delivereats-mssql"
+sql_database_version = "SQLSERVER_2019_EXPRESS"
+sql_tier             = "db-custom-1-3840"
+sql_user             = "delivereats_admin"
+sql_password         = "CAMBIAR_POR_PASSWORD_SEGURO"
+
+# Cloud Run
+frontend_image = "us-central1-docker.pkg.dev/mi-proyecto-gcp/delivereats/frontend:latest"
+
+# VM load testing
+vm_name         = "delivereats-loadtest"
+vm_machine_type = "e2-medium"

@@ -1,0 +1,19 @@
+---
+# =============================================================
+# Playbook principal — DeliverEats Load Testing VM
+# =============================================================
+# Configura la VM de load testing de forma idempotente.
+# Se puede ejecutar múltiples veces sin efectos secundarios.
+#
+# Uso:
+#   ansible-playbook playbook.yml
+#   ansible-playbook playbook.yml -i "IP_VM,"   (CI/CD)
+#   ansible-playbook playbook.yml --check        (dry-run)
+# =============================================================
+
+- name: Configurar VM de Load Testing
+  hosts: loadtest
+  become: true   # sudo — necesario para instalar paquetes del sistema
+
+  roles:
+    - loadtest
