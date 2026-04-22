@@ -94,3 +94,11 @@ variable "vm_machine_type" {
   type        = string
   default     = "e2-medium"
 }
+
+# ── CI/CD ─────────────────────────────────────────────────────────────────────
+
+variable "ci_service_account" {
+  description = "Email del SA de CI/CD (GitHub Actions). Recibe roles/container.admin para poder crear ClusterRoles en el deploy."
+  type        = string
+  default     = ""
+}

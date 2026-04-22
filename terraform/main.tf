@@ -30,15 +30,16 @@ module "networking" {
 module "gke" {
   source = "./modules/gke"
 
-  project_id      = var.project_id
-  cluster_name    = var.gke_cluster_name
-  zone            = var.zone
-  region          = var.region
-  vpc_name        = module.networking.vpc_name
-  gke_subnet_name = module.networking.gke_subnet_name
-  node_count      = var.gke_node_count
-  machine_type    = var.gke_machine_type
-  environment     = var.environment
+  project_id          = var.project_id
+  cluster_name        = var.gke_cluster_name
+  zone                = var.zone
+  region              = var.region
+  vpc_name            = module.networking.vpc_name
+  gke_subnet_name     = module.networking.gke_subnet_name
+  node_count          = var.gke_node_count
+  machine_type        = var.gke_machine_type
+  environment         = var.environment
+  ci_service_account  = var.ci_service_account
 
   depends_on = [module.networking]
 }

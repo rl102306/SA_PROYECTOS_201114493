@@ -94,6 +94,7 @@ jobs:
             -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
             -var="sql_password=dummy-for-validation" \
             -var="frontend_image=gcr.io/dummy/image:latest" \
+            -var="ci_service_account=${{ secrets.GCP_SERVICE_ACCOUNT }}" \
             -input=false \
             -no-color
           rm ci_backend_override.tf

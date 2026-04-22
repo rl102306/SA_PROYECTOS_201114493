@@ -36,3 +36,9 @@ variable "environment" {
   type    = string
   default = "prod"
 }
+
+variable "ci_service_account" {
+  description = "Email del SA de CI/CD. Si se provee, recibe roles/container.admin para crear ClusterRoles."
+  type        = string
+  default     = ""
+}

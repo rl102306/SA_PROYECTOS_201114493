@@ -139,6 +139,19 @@ resource "google_container_node_pool" "main" {
   }
 }
 
+# ── IAM: SA de CI/CD ──────────────────────────────────────────────────────────
+# El SA de GitHub Actions necesita roles/container.admin para poder aplicar
+# ClusterRoles y ClusterRoleBindings en el deploy (kubectl apply -f k8s/elk/).
+# Solo se crea si ci_service_account está definido (no aplica en plan sin credenciales).
+
+resource "google_project_iam_member" "ci_container_admin" {
+  count = var.ci_service_account != "" ? 1 : 0
+
+  project = var.project_id
+  role    = "roles/container.admin"
+  member  = "serviceAccount:${var.ci_service_account}"
+}
+
 # ── Artifact Registry ─────────────────────────────────────────────────────────
 # Repositorio Docker donde el CI/CD pushea las imágenes.
 # Lo ponemos en este módulo porque GKE lo consume directamente.
