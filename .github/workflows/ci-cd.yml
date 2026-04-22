@@ -77,20 +77,22 @@ jobs:
         run: terraform validate
         # Verifica que las referencias entre módulos y variables son correctas
 
-      - name: Terraform Plan (dry-run)
+      - name: Terraform Plan
         working-directory: ./terraform
-        # El plan usa backend local (inicializado en el step anterior).
-        # continue-on-error: true para que no falle el pipeline si GCP no está
-        # disponible (ej. secrets no configurados en forks).
-        continue-on-error: true
         run: |
           terraform plan \
             -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
-            -var="sql_password=dummy-for-validation" \
-            -var="frontend_image=gcr.io/dummy/image:latest" \
+            -var="sql_password=${{ secrets.SQL_PASSWORD }}" \
+            -var="frontend_image=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/delivereats/frontend:latest" \
             -var="ci_service_account=${{ secrets.GCP_SERVICE_ACCOUNT }}" \
             -input=false \
-            -no-color
+            -no-color \
+            -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve tfplan
 
   # ============================================================
   # JOB 1: BUILD
