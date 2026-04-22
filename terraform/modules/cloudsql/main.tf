@@ -36,6 +36,7 @@ resource "google_sql_database_instance" "mssql" {
   name             = var.instance_name
   database_version = var.database_version
   region           = var.region
+  root_password    = var.sql_password # SQL Server requiere root password obligatoriamente
 
   # Evitar que terraform destroy borre la BD con datos en producción.
   # Para CI/CD de pruebas se puede cambiar a false.

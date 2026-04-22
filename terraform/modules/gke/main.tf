@@ -161,4 +161,8 @@ resource "google_artifact_registry_repository" "images" {
   repository_id = "delivereats"
   description   = "Imágenes Docker de DeliverEats"
   format        = "DOCKER"
+
+  lifecycle {
+    ignore_changes = all # El repo puede existir de runs anteriores
+  }
 }
