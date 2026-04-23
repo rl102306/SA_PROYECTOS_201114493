@@ -480,13 +480,52 @@ jobs:
           kubectl get services -n $K8S_NAMESPACE
 
   # ============================================================
-  # JOB 5: SMOKE TEST
+  # JOB 5: SEED
+  # Inserta datos de prueba en catalog-db para el smoke test.
+  # ============================================================
+  seed:
+    name: Seed Test Data
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    continue-on-error: true
+
+    steps:
+      - name: Checkout codigo fuente
+        uses: actions/checkout@v4
+
+      - name: Autenticar en Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Configurar gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Instalar gke-gcloud-auth-plugin
+        run: gcloud components install gke-gcloud-auth-plugin --quiet
+
+      - name: Obtener credenciales del cluster GKE
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ secrets.GCP_CLUSTER_NAME }}
+          location: ${{ secrets.GCP_CLUSTER_ZONE }}
+
+      - name: Aplicar seed job
+        run: |
+          kubectl delete job seed-catalog-data -n $K8S_NAMESPACE --ignore-not-found=true
+          kubectl apply -f k8s/seed/seed-job.yaml
+          kubectl wait --for=condition=complete job/seed-catalog-data -n $K8S_NAMESPACE --timeout=60s
+
+  # ============================================================
+  # JOB 6: SMOKE TEST
   # Valida el flujo crítico después del deploy.
   # ============================================================
   smoke-test:
     name: Smoke Test
     runs-on: ubuntu-latest
-    needs: [deploy]
+    needs: [seed]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     continue-on-error: true
 
