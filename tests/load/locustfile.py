@@ -11,12 +11,12 @@ Pesos de tareas (weight):
   - create_order:    1
 
 Uso headless (CI/CD):
-  locust --headless --host http://delivereats.local \\
+  locust --headless --host http://34.44.246.195 \\
          --users 10 --spawn-rate 2 --run-time 2m \\
          --html report.html --locustfile locustfile.py
 
 Uso con UI (local):
-  locust --host http://delivereats.local --locustfile locustfile.py
+  locust --host http://34.44.246.195 --locustfile locustfile.py
   → Abrir http://localhost:8089
 """
 
@@ -28,9 +28,7 @@ from locust import HttpUser, task, between, events
 
 
 # ── Datos compartidos entre usuarios (se cargan en on_start) ─────────────────
-# En lugar de que cada usuario haga login en cada request, cachean el token.
-RESTAURANTS = []  # Se llena cuando el primer usuario hace login
-RESTAURANT_LOCK = False
+RESTAURANTS = []
 
 
 def random_email():
@@ -47,12 +45,20 @@ class DeliverEatsUser(HttpUser):
     2. Navega el catálogo (frecuente)
     3. Eventualmente crea un pedido (poco frecuente)
     """
-    # Tiempo de espera entre tareas: simula un usuario leyendo la pantalla
     wait_time = between(1, 3)
+
+    def _base_headers(self):
+        return {"Host": "api.delivereats.local"}
+
+    def _auth_headers(self):
+        headers = {"Host": "api.delivereats.local"}
+        if self.token:
+            headers["Authorization"] = f"Bearer {self.token}"
+        return headers
 
     def on_start(self):
         """Se ejecuta una vez cuando el usuario virtual arranca."""
-        global RESTAURANTS, RESTAURANT_LOCK
+        global RESTAURANTS
 
         self.token = None
         self.user_id = None
@@ -68,7 +74,7 @@ class DeliverEatsUser(HttpUser):
             "firstName": "Locust",
             "lastName": "User",
             "role": "CLIENT"
-        }, catch_response=True, name="/auth/register") as resp:
+        }, headers=self._base_headers(), catch_response=True, name="/auth/register") as resp:
             if resp.status_code != 200:
                 resp.failure(f"Register falló: {resp.status_code}")
                 return
@@ -77,7 +83,7 @@ class DeliverEatsUser(HttpUser):
         with self.client.post("/auth/login", json={
             "email": self.email,
             "password": self.password
-        }, catch_response=True, name="/auth/login") as resp:
+        }, headers=self._base_headers(), catch_response=True, name="/auth/login") as resp:
             if resp.status_code == 200:
                 data = resp.json()
                 self.token = data.get("token")
@@ -90,6 +96,7 @@ class DeliverEatsUser(HttpUser):
         # Cargar restaurantes una sola vez para todos los usuarios
         if not RESTAURANTS:
             with self.client.get("/catalog/restaurants",
+                                 headers=self._base_headers(),
                                  name="/catalog/restaurants",
                                  catch_response=True) as resp:
                 if resp.status_code == 200:
@@ -107,6 +114,7 @@ class DeliverEatsUser(HttpUser):
             return
         with self.client.get(
             f"/catalog/restaurants/{self.restaurant_id}/products",
+            headers=self._base_headers(),
             name="/catalog/restaurants/:id/products",
             catch_response=True
         ) as resp:
@@ -114,15 +122,13 @@ class DeliverEatsUser(HttpUser):
                 data = resp.json()
                 self.products = data.get("products", [])
 
-    def _auth_headers(self):
-        return {"Authorization": f"Bearer {self.token}"} if self.token else {}
-
     # ── Tareas ────────────────────────────────────────────────────────────────
 
     @task(5)
     def get_restaurants(self):
         """Ver lista de restaurantes — tarea más frecuente."""
         with self.client.get("/catalog/restaurants",
+                             headers=self._base_headers(),
                              name="/catalog/restaurants",
                              catch_response=True) as resp:
             if resp.status_code == 200:
@@ -137,6 +143,7 @@ class DeliverEatsUser(HttpUser):
             return
         with self.client.get(
             f"/catalog/restaurants/{self.restaurant_id}/products",
+            headers=self._base_headers(),
             name="/catalog/restaurants/:id/products",
             catch_response=True
         ) as resp:
