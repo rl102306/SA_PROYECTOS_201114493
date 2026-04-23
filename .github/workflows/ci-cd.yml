@@ -393,6 +393,14 @@ jobs:
           echo "Imagenes actualizadas:"
           grep -r "image:.*pkg.dev" k8s/ || echo "Sin cambios detectados"
 
+      - name: Instalar ingress-nginx
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
+          kubectl wait --namespace ingress-nginx \
+            --for=condition=ready pod \
+            --selector=app.kubernetes.io/component=controller \
+            --timeout=120s || true
+
       - name: Aplicar namespace
         run: kubectl apply -f k8s/namespace/
 
