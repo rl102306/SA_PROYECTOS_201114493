@@ -12,7 +12,7 @@
 # =============================================================
 
 - name: Configurar VM de Load Testing
-  hosts: loadtest
+  hosts: all
   become: true   # sudo — necesario para instalar paquetes del sistema
 
   roles:

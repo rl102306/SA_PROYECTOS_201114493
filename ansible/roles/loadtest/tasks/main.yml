@@ -30,29 +30,29 @@
   file:
     path: "{{ tests_dir }}"
     state: directory
-    owner: ubuntu
-    group: ubuntu
+    owner: loadtest
+    group: loadtest
     mode: "0755"
 
 - name: Crear directorio de reportes
   file:
     path: "{{ tests_dir }}/reports"
     state: directory
-    owner: ubuntu
-    group: ubuntu
+    owner: loadtest
+    group: loadtest
     mode: "0755"
 
 # ── 4. Instalar Locust en entorno virtual ─────────────────────────────────────
 # Se usa virtualenv para aislar las dependencias Python del sistema.
 # pip con "version" es idempotente: no reinstala si la versión coincide.
 - name: Crear entorno virtual Python
-  become_user: ubuntu
+  become_user: loadtest
   command: python3 -m venv "{{ tests_dir }}/venv"
   args:
     creates: "{{ tests_dir }}/venv/bin/activate"   # Solo crea si no existe
 
 - name: Instalar Locust en el entorno virtual
-  become_user: ubuntu
+  become_user: loadtest
   pip:
     name: "locust=={{ locust_version }}"
     virtualenv: "{{ tests_dir }}/venv"
@@ -65,24 +65,24 @@
   copy:
     src: smoke_test.sh
     dest: "{{ tests_dir }}/smoke_test.sh"
-    owner: ubuntu
-    group: ubuntu
+    owner: loadtest
+    group: loadtest
     mode: "0755"   # Ejecutable
 
 - name: Copiar script de Locust
   copy:
     src: locustfile.py
     dest: "{{ tests_dir }}/locustfile.py"
-    owner: ubuntu
-    group: ubuntu
+    owner: loadtest
+    group: loadtest
     mode: "0644"
 
 # ── 6. Crear script de ejecución de la prueba de carga ───────────────────────
 - name: Crear script run_load_test.sh
   copy:
     dest: "{{ tests_dir }}/run_load_test.sh"
-    owner: ubuntu
-    group: ubuntu
+    owner: loadtest
+    group: loadtest
     mode: "0755"
     content: |
       #!/bin/bash
@@ -109,7 +109,7 @@
 
 # ── 7. Verificar que Locust quedó instalado correctamente ────────────────────
 - name: Verificar versión de Locust instalada
-  become_user: ubuntu
+  become_user: loadtest
   command: "{{ tests_dir }}/venv/bin/locust --version"
   register: locust_version_output
   changed_when: false   # Este comando nunca "cambia" nada — solo verifica

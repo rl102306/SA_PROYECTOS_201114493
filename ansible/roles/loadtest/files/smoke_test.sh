@@ -52,6 +52,7 @@ echo "======================================================="
 http_get() {
   curl -s -o /tmp/smoke_response.json -w "%{http_code}" \
     --max-time 10 \
+    -H "Host: api.delivereats.local" \
     -H "Authorization: Bearer ${TOKEN:-}" \
     "$1"
 }
@@ -59,6 +60,7 @@ http_get() {
 http_post() {
   curl -s -o /tmp/smoke_response.json -w "%{http_code}" \
     --max-time 10 \
+    -H "Host: api.delivereats.local" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer ${TOKEN:-}" \
     -d "$2" \
