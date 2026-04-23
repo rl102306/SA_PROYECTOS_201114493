@@ -202,13 +202,158 @@ data:
 
     # ── OUTPUT: enviar a Elasticsearch con índice por servicio ────────────
 
-    <filter delivereats.**>
-      @type record_transformer
-      enable_ruby true
-      <record>
-        service_index "delivereats-#{tag.split('.')[1]}"
-      </record>
-    </filter>
+    <match delivereats.api-gateway>
+      @type elasticsearch
+      host elasticsearch.logging.svc.cluster.local
+      port 9200
+      scheme http
+      logstash_format true
+      logstash_prefix delivereats-api-gateway
+      logstash_dateformat %Y.%m.%d
+      <buffer>
+        @type file
+        path /var/log/fluentd-buffers/api-gateway.buffer
+        flush_interval 5s
+        chunk_limit_size 2M
+        overflow_action block
+      </buffer>
+    </match>
+
+    <match delivereats.auth-service>
+      @type elasticsearch
+      host elasticsearch.logging.svc.cluster.local
+      port 9200
+      scheme http
+      logstash_format true
+      logstash_prefix delivereats-auth-service
+      logstash_dateformat %Y.%m.%d
+      <buffer>
+        @type file
+        path /var/log/fluentd-buffers/auth-service.buffer
+        flush_interval 5s
+        chunk_limit_size 2M
+        overflow_action block
+      </buffer>
+    </match>
+
+    <match delivereats.catalog-service>
+      @type elasticsearch
+      host elasticsearch.logging.svc.cluster.local
+      port 9200
+      scheme http
+      logstash_format true
+      logstash_prefix delivereats-catalog-service
+      logstash_dateformat %Y.%m.%d
+      <buffer>
+        @type file
+        path /var/log/fluentd-buffers/catalog-service.buffer
+        flush_interval 5s
+        chunk_limit_size 2M
+        overflow_action block
+      </buffer>
+    </match>
+
+    <match delivereats.order-service>
+      @type elasticsearch
+      host elasticsearch.logging.svc.cluster.local
+      port 9200
+      scheme http
+      logstash_format true
+      logstash_prefix delivereats-order-service
+      logstash_dateformat %Y.%m.%d
+      <buffer>
+        @type file
+        path /var/log/fluentd-buffers/order-service.buffer
+        flush_interval 5s
+        chunk_limit_size 2M
+        overflow_action block
+      </buffer>
+    </match>
+
+    <match delivereats.delivery-service>
+      @type elasticsearch
+      host elasticsearch.logging.svc.cluster.local
+      port 9200
+      scheme http
+      logstash_format true
+      logstash_prefix delivereats-delivery-service
+      logstash_dateformat %Y.%m.%d
+      <buffer>
+        @type file
+        path /var/log/fluentd-buffers/delivery-service.buffer
+        flush_interval 5s
+        chunk_limit_size 2M
+        overflow_action block
+      </buffer>
+    </match>
+
+    <match delivereats.payment-service>
+      @type elasticsearch
+      host elasticsearch.logging.svc.cluster.local
+      port 9200
+      scheme http
+      logstash_format true
+      logstash_prefix delivereats-payment-service
+      logstash_dateformat %Y.%m.%d
+      <buffer>
+        @type file
+        path /var/log/fluentd-buffers/payment-service.buffer
+        flush_interval 5s
+        chunk_limit_size 2M
+        overflow_action block
+      </buffer>
+    </match>
+
+    <match delivereats.notification-service>
+      @type elasticsearch
+      host elasticsearch.logging.svc.cluster.local
+      port 9200
+      scheme http
+      logstash_format true
+      logstash_prefix delivereats-notification-service
+      logstash_dateformat %Y.%m.%d
+      <buffer>
+        @type file
+        path /var/log/fluentd-buffers/notification-service.buffer
+        flush_interval 5s
+        chunk_limit_size 2M
+        overflow_action block
+      </buffer>
+    </match>
+
+    <match delivereats.fx-service>
+      @type elasticsearch
+      host elasticsearch.logging.svc.cluster.local
+      port 9200
+      scheme http
+      logstash_format true
+      logstash_prefix delivereats-fx-service
+      logstash_dateformat %Y.%m.%d
+      <buffer>
+        @type file
+        path /var/log/fluentd-buffers/fx-service.buffer
+        flush_interval 5s
+        chunk_limit_size 2M
+        overflow_action block
+      </buffer>
+    </match>
+
+    <match delivereats.order-cleanup>
+      @type elasticsearch
+      host elasticsearch.logging.svc.cluster.local
+      port 9200
+      scheme http
+      logstash_format true
+      logstash_prefix delivereats-order-cleanup
+      logstash_dateformat %Y.%m.%d
+      <buffer>
+        @type file
+        path /var/log/fluentd-buffers/order-cleanup.buffer
+        flush_interval 5s
+        chunk_limit_size 2M
+        overflow_action block
+      </buffer>
+    </match>
 
     <match delivereats.**>
       @type elasticsearch
@@ -216,9 +361,8 @@ data:
       host elasticsearch.logging.svc.cluster.local
       port 9200
       scheme http
-
       logstash_format true
-      logstash_prefix_key service_index
+      logstash_prefix delivereats-other
       logstash_dateformat %Y.%m.%d
 
       # Buffer en disco: si ES no está disponible, los logs se guardan

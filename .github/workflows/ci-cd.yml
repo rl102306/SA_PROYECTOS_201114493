@@ -543,6 +543,9 @@ jobs:
       - name: Instalar dependencias del smoke test
         run: sudo apt-get install -y curl jq
 
+      - name: Esperar estabilidad de pods
+        run: sleep 60
+
       - name: Ejecutar smoke test
         env:
           BASE_URL: "http://35.184.58.71"
