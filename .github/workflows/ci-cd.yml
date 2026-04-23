@@ -499,7 +499,7 @@ jobs:
 
       - name: Ejecutar smoke test
         env:
-          BASE_URL: "http://34.44.246.195"
+          BASE_URL: "http://35.184.58.71"
         run: |
           chmod +x tests/smoke/smoke_test.sh
           tests/smoke/smoke_test.sh
