@@ -202,6 +202,14 @@ data:
 
     # ── OUTPUT: enviar a Elasticsearch con índice por servicio ────────────
 
+    <filter delivereats.**>
+      @type record_transformer
+      enable_ruby true
+      <record>
+        service_index "delivereats-#{tag.split('.')[1]}"
+      </record>
+    </filter>
+
     <match delivereats.**>
       @type elasticsearch
       @id out_elasticsearch
@@ -209,10 +217,8 @@ data:
       port 9200
       scheme http
 
-      # El índice se construye como: delivereats-<servicio>-YYYY.MM.DD
-      # "tag" aquí es el tag de Fluentd: "delivereats.auth-service" → "delivereats-auth-service"
       logstash_format true
-      logstash_prefix ${tag_parts[0]}-${tag_parts[1]}
+      logstash_prefix_key service_index
       logstash_dateformat %Y.%m.%d
 
       # Buffer en disco: si ES no está disponible, los logs se guardan
