@@ -26,15 +26,15 @@ spec:
                    -U catalog_user \
                    -d catalog_db <<'SQL'
 
-              INSERT INTO restaurants (id, name, address, phone, category, is_active)
+              INSERT INTO restaurants (id, name, address, phone, is_active)
               VALUES
-                ('99999999-9999-9999-9999-999999999999', 'Restaurante Central', 'Zona 1, Guatemala', '22223333', 'COMIDA_RAPIDA', true),
-                ('88888888-8888-8888-8888-888888888888', 'Pizzeria Italia', 'Zona 10, Guatemala', '22224444', 'ITALIANA', true)
+                ('99999999-9999-9999-9999-999999999999', 'Restaurante Central', 'Zona 1, Guatemala', '22223333', true),
+                ('88888888-8888-8888-8888-888888888888', 'Pizzeria Italia', 'Zona 10, Guatemala', '22224444', true)
               ON CONFLICT (id) DO NOTHING;
 
               INSERT INTO products (id, restaurant_id, name, description, price, is_available)
               VALUES
-                ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '99999999-9999-9999-9999-999999999999', 'Hamburguesa Clásica', 'Con papas fritas', 45.00, true),
+                ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '99999999-9999-9999-9999-999999999999', 'Hamburguesa Clasica', 'Con papas fritas', 45.00, true),
                 ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '99999999-9999-9999-9999-999999999999', 'Combo Familiar', 'Para 4 personas', 120.00, true),
                 ('cccccccc-cccc-cccc-cccc-cccccccccccc', '88888888-8888-8888-8888-888888888888', 'Pizza Margherita', 'Tomate y mozzarella', 65.00, true)
               ON CONFLICT (id) DO NOTHING;

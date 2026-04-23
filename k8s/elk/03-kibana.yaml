@@ -33,10 +33,6 @@ spec:
           env:
             - name: ELASTICSEARCH_HOSTS
               value: "http://elasticsearch:9200"
-            - name: SERVER_BASEPATH
-              value: "/kibana"               # Necesario para que el Ingress funcione en /kibana
-            - name: SERVER_REWRITEBASEPATH
-              value: "true"
             - name: XPACK_SECURITY_ENABLED
               value: "false"
 
@@ -79,7 +75,7 @@ metadata:
   name: kibana-ingress
   namespace: logging
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
   ingressClassName: nginx
