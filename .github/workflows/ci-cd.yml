@@ -77,21 +77,6 @@ jobs:
         run: terraform validate
         # Verifica que las referencias entre módulos y variables son correctas
 
-      - name: Terraform Import recursos existentes
-        working-directory: ./terraform
-        continue-on-error: true
-        # Importa recursos que pueden existir de runs anteriores fallidos.
-        # continue-on-error: true porque si no existen aún el import falla y eso es normal.
-        run: |
-          terraform import \
-            -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
-            -var="sql_password=${{ secrets.SQL_PASSWORD }}" \
-            -var="frontend_image=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/delivereats/frontend:latest" \
-            -var="ci_service_account=${{ secrets.GCP_SERVICE_ACCOUNT }}" \
-            -input=false \
-            module.gke.google_artifact_registry_repository.images \
-            projects/${{ secrets.GCP_PROJECT_ID }}/locations/us-central1/repositories/delivereats
-
       - name: Terraform Plan
         working-directory: ./terraform
         run: |
@@ -103,11 +88,6 @@ jobs:
             -input=false \
             -no-color \
             -out=tfplan
-
-      - name: Terraform Apply
-        working-directory: ./terraform
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: terraform apply -auto-approve tfplan
 
   # ============================================================
   # JOB 1: BUILD
