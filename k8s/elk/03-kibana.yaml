@@ -33,6 +33,10 @@ spec:
           env:
             - name: ELASTICSEARCH_HOSTS
               value: "http://elasticsearch:9200"
+            - name: SERVER_BASEPATH
+              value: "/kibana"
+            - name: SERVER_REWRITEBASEPATH
+              value: "true"
             - name: XPACK_SECURITY_ENABLED
               value: "false"
 
@@ -74,17 +78,14 @@ kind: Ingress
 metadata:
   name: kibana-ingress
   namespace: logging
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-    nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
   ingressClassName: nginx
   rules:
     - host: delivereats.local
       http:
         paths:
-          - path: /kibana(/|$)(.*)
-            pathType: ImplementationSpecific
+          - path: /kibana
+            pathType: Prefix
             backend:
               service:
                 name: kibana
