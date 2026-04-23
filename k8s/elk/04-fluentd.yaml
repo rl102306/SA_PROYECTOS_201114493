@@ -279,10 +279,10 @@ spec:
           resources:
             requests:
               cpu: "100m"
-              memory: "200Mi"
+              memory: "256Mi"
             limits:
               cpu: "500m"
-              memory: "400Mi"
+              memory: "600Mi"
 
           volumeMounts:
             - name: config-volume
