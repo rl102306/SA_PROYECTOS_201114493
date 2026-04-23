@@ -217,7 +217,7 @@ data:
 
       # Buffer en disco: si ES no está disponible, los logs se guardan
       # temporalmente y se reintentan (no se pierden).
-      <buffer tag, time>
+      <buffer tag>
         @type file
         path /var/log/fluentd-buffers/kubernetes.*.buffer
         flush_mode interval
