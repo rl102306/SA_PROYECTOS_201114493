@@ -1,8 +1,13 @@
 name: DeliverEats CI/CD
 
-# Se activa cuando hay un push a main o un Pull Request hacia main.
-# - Push a main: ejecuta el ciclo completo build + test + push + deploy
-# - Pull Request a main: ejecuta build + test (sin push ni deploy)
+# La infraestructura (GKE, Artifact Registry, Cloud SQL, VM) se crea
+# manualmente con "terraform apply" ANTES de correr este pipeline.
+# Este pipeline asume que la infra ya existe.
+#
+# Flujo:
+#   terraform (validacion) ─┐
+#   test                    ├─► push ─► deploy ─► ansible ─► smoke-test
+#   build ──────────────────┘
 on:
   push:
     branches:
@@ -17,7 +22,6 @@ env:
   REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/delivereats
   K8S_NAMESPACE: delivereats
 
-# Permiso necesario para Workload Identity Federation
 permissions:
   contents: read
   id-token: write
@@ -25,12 +29,9 @@ permissions:
 jobs:
   # ============================================================
   # JOB 0: TERRAFORM VALIDATE
-  # Valida el código de infraestructura antes de cualquier build.
-  # Si el IaC está mal formateado o inválido, falla aquí rápido.
-  #
-  # terraform fmt -check : detecta archivos mal formateados
-  # terraform validate   : verifica sintaxis y referencias
-  # terraform plan       : simula los cambios (sin aplicar)
+  # Solo valida sintaxis y formato del código IaC.
+  # NO crea ni modifica infraestructura (sin apply).
+  # El apply se corre manualmente antes del primer deploy.
   # ============================================================
   terraform:
     name: Terraform Validate
@@ -69,15 +70,12 @@ jobs:
       - name: Terraform Init
         working-directory: ./terraform
         run: terraform init -input=false
-        # Usa el backend GCS real (bucket delivereats-tfstate).
-        # La autenticacion viene del step Workload Identity anterior.
 
       - name: Terraform Validate
         working-directory: ./terraform
         run: terraform validate
-        # Verifica que las referencias entre módulos y variables son correctas
 
-      - name: Terraform Plan
+      - name: Terraform Plan (dry-run)
         working-directory: ./terraform
         run: |
           terraform plan \
@@ -86,32 +84,71 @@ jobs:
             -var="frontend_image=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/delivereats/frontend:latest" \
             -var="ci_service_account=${{ secrets.GCP_SERVICE_ACCOUNT }}" \
             -input=false \
-            -no-color \
-            -out=tfplan
+            -no-color
+        # Plan es solo informativo, no aplica cambios.
 
   # ============================================================
-  # JOB 1: BUILD
-  # Construye todas las imagenes Docker de los microservicios.
-  # Corre en todas las ramas para detectar errores de build
-  # antes de que lleguen a main.
+  # JOB 1: TEST
+  # Corre en paralelo con build y terraform.
   # ============================================================
-  build:
-    name: Build Docker Images
+  test:
+    name: Run Unit Tests
     runs-on: ubuntu-latest
-    needs: [terraform]
 
     steps:
       - name: Checkout codigo fuente
         uses: actions/checkout@v4
 
-      # Calcula el tag de version basado en el SHA corto del commit.
-      # Ejemplo: si el commit es abc1234def, el tag sera "abc1234".
+      - name: Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            restaurant-catalog-service/package-lock.json
+            order-service/package-lock.json
+            auth-service/package-lock.json
+
+      - name: Instalar dependencias — restaurant-catalog-service
+        working-directory: ./restaurant-catalog-service
+        run: npm ci
+
+      - name: Ejecutar tests — restaurant-catalog-service
+        working-directory: ./restaurant-catalog-service
+        run: npm test -- --forceExit --passWithNoTests
+
+      - name: Instalar dependencias — order-service
+        working-directory: ./order-service
+        run: npm ci
+
+      - name: Ejecutar tests — order-service
+        working-directory: ./order-service
+        run: npm test -- --forceExit --passWithNoTests
+
+      - name: Instalar dependencias — auth-service
+        working-directory: ./auth-service
+        run: npm ci
+
+      - name: Ejecutar tests — auth-service
+        working-directory: ./auth-service
+        run: npm test -- --forceExit --passWithNoTests
+
+  # ============================================================
+  # JOB 2: BUILD
+  # Construye imágenes Docker. Corre en paralelo con test y terraform.
+  # ============================================================
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout codigo fuente
+        uses: actions/checkout@v4
+
       - name: Calcular tag de version
         id: version
         run: echo "tag=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
 
-      # Autenticacion con GCP usando Workload Identity Federation.
-      # No requiere JSON key, GCP confia directamente en GitHub Actions.
       - name: Autenticar en Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -188,61 +225,14 @@ jobs:
         run: docker images | grep delivereats
 
   # ============================================================
-  # JOB 2: TEST
-  # Ejecuta los unit tests de los servicios core.
-  # Si falla cualquier test, el pipeline se detiene aqui.
-  # ============================================================
-  test:
-    name: Run Unit Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout codigo fuente
-        uses: actions/checkout@v4
-
-      - name: Configurar Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: |
-            restaurant-catalog-service/package-lock.json
-            order-service/package-lock.json
-            auth-service/package-lock.json
-
-      - name: Instalar dependencias — restaurant-catalog-service
-        working-directory: ./restaurant-catalog-service
-        run: npm ci
-
-      - name: Ejecutar tests — restaurant-catalog-service
-        working-directory: ./restaurant-catalog-service
-        run: npm test -- --forceExit --passWithNoTests
-
-      - name: Instalar dependencias — order-service
-        working-directory: ./order-service
-        run: npm ci
-
-      - name: Ejecutar tests — order-service
-        working-directory: ./order-service
-        run: npm test -- --forceExit --passWithNoTests
-
-      - name: Instalar dependencias — auth-service
-        working-directory: ./auth-service
-        run: npm ci
-
-      - name: Ejecutar tests — auth-service
-        working-directory: ./auth-service
-        run: npm test -- --forceExit --passWithNoTests
-
-  # ============================================================
   # JOB 3: PUSH
-  # Publica las imagenes en Google Artifact Registry.
-  # Solo corre en main, despues de que build Y test pasen.
+  # Publica imágenes en Artifact Registry (ya creado con terraform apply).
+  # Solo corre en push a main, cuando terraform + test + build pasan.
   # ============================================================
   push:
     name: Push Images to Artifact Registry
     runs-on: ubuntu-latest
-    needs: [build, test]
+    needs: [terraform, test, build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
@@ -357,16 +347,15 @@ jobs:
 
   # ============================================================
   # JOB 4: DEPLOY
-  # Despliega los manifests de K8s al cluster de GKE.
-  # Solo corre en main, despues de que push termine exitosamente.
+  # Despliega manifests K8s al cluster GKE (ya creado con terraform apply).
+  # Solo corre en main después de que push termine.
+  # continue-on-error: true por si el cluster aún no está listo.
   # ============================================================
   deploy:
     name: Deploy to GKE
     runs-on: ubuntu-latest
     needs: [push]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    # continue-on-error: el cluster GKE se crea con terraform apply (fuera del scope de CI).
-    # El pipeline no falla si el cluster no existe en el ambiente academico.
     continue-on-error: true
 
     steps:
@@ -443,7 +432,7 @@ jobs:
           kubectl rollout restart deployment/notification-service -n $K8S_NAMESPACE
           kubectl rollout restart deployment/frontend -n $K8S_NAMESPACE
 
-      - name: Reiniciar statefulsets para aplicar cambios de configuracion
+      - name: Reiniciar statefulsets
         run: |
           kubectl rollout restart statefulset/auth-db -n $K8S_NAMESPACE
           kubectl rollout restart statefulset/catalog-db -n $K8S_NAMESPACE
@@ -452,9 +441,6 @@ jobs:
           kubectl rollout restart statefulset/delivery-db -n $K8S_NAMESPACE
           kubectl rollout restart statefulset/redis -n $K8S_NAMESPACE
 
-      # GKE Autopilot provisiona nodos bajo demanda, lo que puede tardar varios minutos.
-      # continue-on-error: true evita que el pipeline falle por timeout mientras los nodos levantan.
-      # El resumen final muestra el estado real de los pods.
       - name: Esperar a que los deployments esten listos
         continue-on-error: true
         run: |
@@ -488,8 +474,6 @@ jobs:
   # ============================================================
   # JOB 5: ANSIBLE
   # Provisiona la VM de load testing después del deploy.
-  # Solo corre en push a main.
-  # Instala Python, pip y Locust de forma idempotente.
   # ============================================================
   ansible:
     name: Ansible — Provision Load Test VM
@@ -503,8 +487,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Instalar Ansible
-        run: |
-          pip install ansible
+        run: pip install ansible
 
       - name: Configurar clave SSH
         run: |
@@ -525,8 +508,7 @@ jobs:
 
   # ============================================================
   # JOB 6: SMOKE TEST
-  # Valida el flujo crítico después del deploy y provisioning.
-  # Solo corre en push a main.
+  # Valida el flujo crítico después del deploy.
   # ============================================================
   smoke-test:
     name: Smoke Test
