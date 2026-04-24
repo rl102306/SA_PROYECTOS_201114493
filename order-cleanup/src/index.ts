@@ -20,7 +20,7 @@ const AUTH_SERVICE_URL         = process.env.AUTH_SERVICE_URL         || 'localh
 const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || 'localhost:50055';
 
 // Tiempo máximo sin confirmar antes de rechazar (en minutos)
-const PENDING_TIMEOUT_MINUTES = parseInt(process.env.PENDING_TIMEOUT_MINUTES || '60');
+const PAID_TIMEOUT_MINUTES = parseInt(process.env.PAID_TIMEOUT_MINUTES || '60');
 
 // ─── gRPC clients ─────────────────────────────────────────────────────────────
 
@@ -54,7 +54,7 @@ function grpcCall<T>(client: any, method: string, request: object): Promise<T> {
 
 async function run(): Promise<void> {
   console.log(`[order-cleanup] Iniciando — ${new Date().toISOString()}`);
-  console.log(`[order-cleanup] Timeout configurado: ${PENDING_TIMEOUT_MINUTES} minutos`);
+  console.log(`[order-cleanup] Timeout configurado: ${PAID_TIMEOUT_MINUTES} minutos`);
 
   const pool = new Pool(DB_CONFIG);
 
@@ -64,8 +64,9 @@ async function run(): Promise<void> {
     ADD COLUMN IF NOT EXISTS rejection_notified BOOLEAN NOT NULL DEFAULT false
   `);
 
-  // Buscar órdenes PENDING sin atender que superaron el timeout
-  // Anti-spam: rejection_notified = false garantiza que no enviamos email duplicado
+  // Buscar órdenes PAID sin atender por el restaurante que superaron el timeout.
+  // PAID = el cliente pagó pero el restaurante nunca aceptó ni rechazó.
+  // Anti-spam: rejection_notified = false garantiza que no enviamos email duplicado.
   const { rows: expiredOrders } = await pool.query<{
     id: string;
     user_id: string;
@@ -76,12 +77,12 @@ async function run(): Promise<void> {
   }>(`
     SELECT id, user_id, restaurant_id, items, total_amount, created_at
     FROM orders
-    WHERE status = 'PENDING'
+    WHERE status = 'PAID'
       AND rejection_notified = false
-      AND created_at < NOW() - INTERVAL '${PENDING_TIMEOUT_MINUTES} minutes'
+      AND created_at < NOW() - INTERVAL '${PAID_TIMEOUT_MINUTES} minutes'
   `);
 
-  console.log(`[order-cleanup] Órdenes expiradas encontradas: ${expiredOrders.length}`);
+  console.log(`[order-cleanup] Órdenes PAID sin atender encontradas: ${expiredOrders.length}`);
 
   if (expiredOrders.length === 0) {
     console.log('[order-cleanup] Nada que procesar. Saliendo.');
@@ -125,7 +126,7 @@ async function run(): Promise<void> {
              rejection_notified = true,
              updated_at = NOW()
          WHERE id = $1
-           AND status = 'PENDING'
+           AND status = 'PAID'
            AND rejection_notified = false
          RETURNING id`,
         [order.id]
